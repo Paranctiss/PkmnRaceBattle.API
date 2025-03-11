@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using PkmnRaceBattle.Application.Contracts;
+using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonJson;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using PkmnRaceBattle.Persistence.Services;
@@ -89,6 +90,33 @@ namespace PkmnRaceBattle.Persistence.ExternalAPI
             await _dbService.CreateAsync(goldy);
 
             return true;
+        }
+
+        public async Task<MoveMongo> GetMetronomeMove()
+        {
+            MovesJson movesJson = new MovesJson();
+            MoveJson move = new MoveJson();
+            HttpClient _client = new HttpClient();
+
+            int[] bannedMoves = [68, 102, 118, 119, 144, 165];
+
+
+
+            Random rand = new Random();
+            int rnd = rand.Next(1,165);
+            while (bannedMoves.Contains(rnd))
+            {
+                rnd = rand.Next(1,165);
+            }
+
+            HttpResponseMessage moveDetailsResponse = await _client.GetAsync("https://pokeapi.co/api/v2/move/" + rnd);
+            move.name = "osef";
+            move.moveDetails = JsonConvert.DeserializeObject<MoveDetailsJson>(await moveDetailsResponse.Content.ReadAsStringAsync());
+            movesJson.move = move;
+
+            MoveMongo moveMongo = new MoveMongo(movesJson);
+
+            return moveMongo;
         }
     }
 }

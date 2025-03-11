@@ -27,5 +27,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 return move1.Priority > move2.Priority;
             }
         }
+
+        public static bool MoveMustBePlayedLast(PokemonTeamMove move)
+        {
+            string[] moveThatMustBePlayedLast = ["Entrave", "Riposte", "Mimique", "Copie"];
+
+            if (moveThatMustBePlayedLast.Contains(move.NameFr)) return true;
+
+            return false;
+        }
     }
 }

@@ -44,10 +44,10 @@ namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
                 TauxCapture = pokemonBase.CaptureRate,
                 FrontSprite = pokemonBase.Sprites.FrontDefault,
                 BackSprite = pokemonBase.Sprites.BackDefault,
+                Weight = pokemonBase.Weight,
                 EvolutionDetails = pokemonBase.EvolutionDetails,
                 Moves = PokemonMoveSelector.SelectMoves(pokemonBase.Moves, level),
                 Types = pokemonBase.Types
-               
             };
 
             if(pokemonBase.NameFr == "Goldy")
@@ -56,6 +56,29 @@ namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
                 pokemonTeam.Def = 9999;
                 pokemonTeam.DefSpe = 9999;
                 pokemonTeam.Speed = 9999;
+                PokemonTeamMove charge = new PokemonTeamMove();
+                charge.Name = "Charge";
+                charge.NameFr = "Charge";
+                charge.Accuracy = 100;
+                charge.Category = "damage";
+                charge.Id = 33;
+                charge.Pp = 35;
+                charge.Power = 5;
+                charge.Priority = 0;
+                charge.Target = "selected-pokemon";
+                charge.Type = "normal";
+                charge.DamageType = "physical";
+                charge.FlavorText = "ouaf ouaf";
+                charge.Ailment = "none";
+                charge.AilmentChance = 0;
+                charge.CritRate = 0;
+                charge.Drain = 0;
+                charge.FlinchChance = 0;
+                charge.Healing = 0;
+                charge.StatChance = 0;
+                charge.StatsChanges = [];
+                pokemonTeam.Moves = [pokemonTeam.Moves[0], charge];
+                //pokemonTeam.CurrHp = (pokemonTeam.CurrHp / 2) - 2;
             }
 
             if(result == 0 || setShiny == true)

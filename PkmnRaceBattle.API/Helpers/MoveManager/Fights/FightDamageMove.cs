@@ -11,18 +11,57 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
 
 
-        public static PokemonTeam[] PerformDamageMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext) 
+        public static PokemonTeam[] PerformDamageMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, string fieldChange, TurnContext turnContext) 
         {
+            int damages;
+            if (move.BrutDamages != null)
+            {
+                damages = (int)move.BrutDamages;
+                attacker.BlowsTaken = 0;
+            }
+            else
+            {
+                damages = CalculateDamage(attacker, defenser, move, turnContext);
+                if (fieldChange == "Mur Lumière" && move.DamageType == "special") damages = damages / 2;
+                if (fieldChange == "Protection" && move.DamageType == "physical") damages = damages / 2;
+            }
 
-            int damages = CalculateDamage(attacker, defenser, move, turnContext);
+            damages = SpecialCaseDamages(damages, move, attacker, defenser, turnContext);
+            
+            if (attacker.CurrHp > attacker.BaseHp) attacker.CurrHp = attacker.BaseHp;
+
+            int oldDefHp = defenser.CurrHp;
             defenser.CurrHp -= damages;
-            if(defenser.IsFrozen && move.Type == "fire")
+            if(defenser.CurrHp < 0) defenser.CurrHp = 0;
+
+            int damagesTaken = oldDefHp - defenser.CurrHp;
+            attacker.CurrHp += SpecialCaseDrain(damagesTaken, move, attacker, defenser, turnContext);
+
+            defenser.BlowsTaken += damages;
+                defenser.BlowsTakenType = move.DamageType;
+
+            if (defenser.IsFrozen && move.Type == "fire")
             {
                 defenser.IsFrozen = false;
                 turnContext.AddMessage(defenser.NameFr + " n'est plus gelé");
             }
             if (defenser.CurrHp < 0) defenser.CurrHp = 0;
             return [attacker, defenser];
+        }
+
+        private static int SpecialCaseDrain(int damages, PokemonTeamMove move, PokemonTeam attacker, PokemonTeam defenser, TurnContext turnContext)
+        {
+            switch (move.NameFr)
+            {
+                case "Vole-Vie":
+                case "Méga-Sangsue":
+                case "Vampirisme":
+                case "Dévorêve":
+                    turnContext.AddMessage("L'énergie du " + defenser.NameFr + "est drainée");
+                    return damages / 2;
+                    break;
+            }
+            return 0;
         }
 
         private static int CalculateDamage(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
@@ -38,14 +77,22 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             int attackStat = (int)(baseAttackStat * attackMultiplier);
             int defenseStat = (int)(baseDefenseStat * defenseMultiplier);
 
-
+            if (move.Power == null) move.Power = 0;
             double baseDamage = (double)(((2 * attacker.Level / 5.0 + 2) * move.Power * (attackStat / (double)defenseStat)) / 50 + 2);
             
-            double modifier = CalculateModifier(attacker, defenser, move, turnContext);
 
+            double modifier = CalculateModifier(attacker, defenser, move, turnContext);
+            if (IsSpecialCasesModifier(move) && modifier != 0.0) modifier = 1.0;
             int damage = (int)(baseDamage * modifier);
 
             return damage;
+        }
+
+        private static bool IsSpecialCasesModifier(PokemonTeamMove move)
+        {
+            string[] specialCaseModifier = ["Balayage", "Frappe Atlas", "Ombre Nocturne", "Croc Fatal", "Vague Psy"];
+            if (specialCaseModifier.Contains(move.NameFr)) return true;
+            return false;
         }
 
         private static double CalculateModifier(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
@@ -59,6 +106,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
 
             double typeEffectiveness = CalculateTypeEffectiveness(move.Type, defenser.Types, turnContext);
+            if (typeEffectiveness == 0.0) attacker = FightPerformMove.SpecialCaseMissMove(attacker, move, turnContext);
             double critical = 1.0;
             if(IsCriticalHit(attacker, move))
             {
@@ -75,17 +123,25 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
         private static bool IsCriticalHit(PokemonTeam attacker, PokemonTeamMove move)
         {
-            double baseCritRate = 1.0 / 24.0; // Taux de base dans Pokémon (environ 4,17%)
+            // Taux de critique de base
+            double baseCritRate = 1.0 / 24.0; // Taux de base normal (environ 4,17%)
 
+            // Si l'attaque a un taux de critique élevé
             if (move.CritRate == 1)
             {
                 baseCritRate = 1.0 / 8.0; // Taux de critique élevé (12,5%)
             }
 
+            // Appliquer le multiplicateur de taux de critique en fonction de CritChanges
+            double critMultiplier = Math.Pow(2, attacker.CritChanges); // 2^CritChanges
+            double finalCritRate = baseCritRate * critMultiplier;
+
+            // Générer une valeur aléatoire entre 0 et 1
             Random random = new Random();
             double randomValue = random.NextDouble();
 
-            return randomValue < baseCritRate;
+            // Vérifier si un critique se produit
+            return randomValue < finalCritRate;
         }
 
         public static double GetStatMultiplier(int statChange)
@@ -324,6 +380,32 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             if (weakScore == 2 && strongScore == 0) { turnContext.AddMessage("Ce n'est vraiment pas efficace..."); return 0.25; }
             return 1.0;
 
+        }
+    
+        public static bool NeedStackDamages(PokemonTeam defenser)
+        {
+            if(defenser.WaitingMove != null)
+            {
+                if (defenser.WaitingMove.NameFr == "Patience") return true;
+            }
+
+            return false;
+        }
+
+        private static int SpecialCaseDamages(int damages, PokemonTeamMove move, PokemonTeam attacker, PokemonTeam defenser, TurnContext turnContext)
+        {
+            switch (move.NameFr)
+            {
+                case "Riposte":
+                    if (attacker.BlowsTakenType == "physical") return attacker.BlowsTaken * 2;
+                    else
+                    {
+                        turnContext.AddMessage("Mais cela michou");
+                        return 0;
+                    }
+                    break;
+            }
+            return damages;
         }
     }
 }

@@ -7,7 +7,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
     {
         public static PokemonTeam PerformAilment(PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
         {
-            if (!defenser.IsBurning && !defenser.IsParalyzed && !defenser.IsFrozen && defenser.IsSleeping == 0 && !defenser.IsPoisoned)
+            if (!defenser.IsBurning && !defenser.IsParalyzed && !defenser.IsFrozen && defenser.IsSleeping == 0 && defenser.IsPoisoned == 0)
             {
                 switch (move.Ailment)
                 {
@@ -23,8 +23,19 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         }
                         break;
                     case "poison":
-                        defenser.IsPoisoned = true;
-                        turnContext.AddMessage(defenser.NameFr + " est empoisonné");
+                        if(move.NameFr == "Toxik")
+                        {
+                            defenser.IsPoisoned = 2;
+                            defenser.PoisonCount = 0;
+                            turnContext.AddMessage(defenser.NameFr + " est gravement empoisonné");
+                        }
+                        else
+                        {
+                            defenser.IsPoisoned = 1;
+
+                            turnContext.AddMessage(defenser.NameFr + " est empoisonné");
+                        }
+
                         break;
                     case "freeze":
                         defenser.IsFrozen = true;
@@ -94,7 +105,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return true;
         }
 
-        public static PokemonTeam SufferConfusion(PokemonTeam pokemon, TurnContext turnContext)
+        public static PokemonTeam SufferConfusion(PokemonTeam pokemon, string fieldChange, TurnContext turnContext)
         {
             PokemonTeamMove confusionMove = new PokemonTeamMove();
             confusionMove.Name = "confusion";
@@ -105,7 +116,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             confusionMove.DamageType = "physical";
             confusionMove.Power = 40;
             confusionMove.Type = "none";
-            PokemonTeam[] result = FightDamageMove.PerformDamageMove(pokemon, pokemon, confusionMove, turnContext);
+            PokemonTeam[] result = FightDamageMove.PerformDamageMove(pokemon, pokemon, confusionMove, fieldChange, turnContext);
             return result[1];
         }
 
@@ -117,11 +128,23 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 pokemon.CurrHp -= burningDamage;
                 turnContext.AddMessage(pokemon.NameFr + " souffre de sa brûlure");
             }
-            if(pokemon.IsPoisoned && pokemon.CurrHp > 0)
+            if(pokemon.IsPoisoned > 0 && pokemon.CurrHp > 0)
             {
-                int poisonDamage = pokemon.BaseHp / 8;
-                pokemon.CurrHp -= poisonDamage;
-                turnContext.AddMessage(pokemon.NameFr + " souffre du poison");
+                double poisonDamage;
+                if (pokemon.IsPoisoned == 1)
+                {
+                    poisonDamage = pokemon.BaseHp / 8;
+                    
+                    turnContext.AddMessage(pokemon.NameFr + " souffre du poison");
+                }
+                else
+                {
+                    pokemon.PoisonCount++;
+                    double diviseur = (double)pokemon.PoisonCount / 16.0;
+                    poisonDamage = pokemon.BaseHp * diviseur;
+                    turnContext.AddMessage(pokemon.NameFr + " souffre gravement du poison");
+                }
+                pokemon.CurrHp -= (int)Math.Round(poisonDamage);
             }
             return pokemon;
         }
@@ -162,6 +185,19 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             }
 
             return pokemon;
+        }
+
+        public static PokemonTeam RemoveAllAilments(PokemonTeam pokemon, string exception= "") { 
+        
+            if(exception != "sleep") pokemon.IsSleeping = 0;
+            pokemon.IsBurning = false;
+            pokemon.IsFrozen = false;
+            pokemon.IsParalyzed = false;
+            pokemon.IsPoisoned = 0;
+            pokemon.PoisonCount = null;
+
+            return pokemon;
+        
         }
 
 

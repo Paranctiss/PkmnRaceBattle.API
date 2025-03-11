@@ -26,6 +26,7 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
             BaseHappiness = pokemonJson.species.PokemonSpecies.base_happiness;
             CaptureRate = pokemonJson.species.PokemonSpecies.capture_rate;
             GrowthRate = pokemonJson.species.PokemonSpecies.growth_rate.name;
+            Weight = pokemonJson.weight;
             Sprites = new SpritesMongo(pokemonJson.sprites);
             Types = pokemonJson.types
                 .Select(t => new TypeMongo(t))
@@ -52,6 +53,8 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
         public int CaptureRate { get; set; }
 
         public string GrowthRate { get; set; }
+
+        public int Weight {  get; set; }
 
         public SpritesMongo Sprites { get; set; }
 

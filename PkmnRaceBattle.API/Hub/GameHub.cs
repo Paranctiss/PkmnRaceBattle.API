@@ -12,6 +12,11 @@
     using PkmnRaceBattle.Domain.Models.PlayerMongo;
     using PkmnRaceBattle.Domain.Models.PokemonMongo;
     using PkmnRaceBattle.Domain.Models.RoomMongo;
+    using PkmnRaceBattle.Persistence.ExternalAPI;
+    using PkmnRaceBattle.Persistence.Helpers;
+    using System;
+    using System.Diagnostics;
+    using System.Net.Sockets;
 
     public class GameHub : Hub
     {
@@ -136,7 +141,8 @@
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
             int levelAvg = player.GetAverageLevel();
             PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandom();
-            PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg-3, levelAvg-1);
+            //PokemonMongo rndPokemon = await _mongoPokemonRepository.GetPokemonMongoById(1);
+            PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg, levelAvg);
             await _mongoWildPokemonRepository.CreateAsync(wildPokemon);
             await Clients.Caller.SendAsync("responseWildFight", wildPokemon);
         }
@@ -167,12 +173,41 @@
 
             PokemonTeam pokemon = player.Team.FirstOrDefault(x => x.Id == pokemonId);
 
+            pokemon.SpecialCases = new();
+            pokemon.MultiTurnsMoveCount = null;
+            pokemon.MultiTurnsMove = null;
+            pokemon.CantUseMoves = new();
+            pokemon.WaitingMove = null;
+            pokemon.WaitingMoveTurns = null;
+            pokemon.Untargetable = null;
+            pokemon.BlowsTaken = 0;
+            pokemon.BlowsTakenType = null;
+            pokemon.IsConfused = 0;
+            pokemon.CritChanges = 0;
+            if (pokemon.ConvertedType != null)
+            {
+                pokemon.Types[0].Name = pokemon.ConvertedType;
+                pokemon.ConvertedType = null;
+            }
+            if(pokemon.UnmorphedForm != null)
+            {
+                pokemon = pokemon.UnmorphedForm;
+                pokemon.UnmorphedForm = null;
+            }
+            if (pokemon.SavedMove != null)
+            {
+                pokemon.Moves[(int)pokemon.SavedMoveSlot] = pokemon.SavedMove;
+                pokemon.SavedMove = null;
+                pokemon.SavedMoveSlot = null;
+            }
             PokemonTeam pokemonSwap = player.Team[0];
 
             // Échanger les positions
             int indexOfPokemon = Array.IndexOf(player.Team, pokemon);
+            
             player.Team[0] = pokemon;
             player.Team[indexOfPokemon] = pokemonSwap;
+
 
             // Sauvegarder les modifications si nécessaire
             await _mongoPlayerRepository.UpdateAsync(player);
@@ -180,7 +215,7 @@
             await UseMove(userId, pokemon.Id, "swap:", wildPokemonId, true);
         }
 
-        public async Task FinishFight(string userId, string wildPokemonId)
+        public async Task FinishFight(string userId, string wildPokemonId, bool unexpectedEnd = false)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
             PokemonTeam wildPokemon = await _mongoWildPokemonRepository.GetByIdAsync(wildPokemonId);
@@ -195,13 +230,40 @@
                     team.DefChanges = 0;
                     team.DefSpeChanges = 0;
                     team.SpeedChanges = 0;
-                    if (team.HavePlayed && team.CurrHp > 0)
+                    team.CritChanges = 0;
+                    team.SpecialCases = new();
+                    team.MultiTurnsMoveCount = null;
+                    team.MultiTurnsMove = null;
+                    team.CantUseMoves = new();
+                    team.WaitingMove = null;
+                    team.WaitingMoveTurns = null;
+                    team.Untargetable = null;
+                    team.BlowsTaken = 0;
+                    team.BlowsTakenType = null;
+                    team.IsConfused = 0;
+                    if (team.ConvertedType != null)
+                    {
+                        team.Types[0].Name = team.ConvertedType;
+                        team.ConvertedType = null;
+                    }
+                    if (team.UnmorphedForm != null)
+                    {
+                        team = team.UnmorphedForm;
+                        team.UnmorphedForm = null;
+                    }
+                    if (team.SavedMove != null)
+                    {
+                        team.Moves[(int)team.SavedMoveSlot] = team.SavedMove;
+                        team.SavedMove = null;
+                        team.SavedMoveSlot = null;
+                    }
+
+                    if (team.HavePlayed && team.CurrHp > 0 && !unexpectedEnd)
                     {
                         List<MoveMongo> movesToLearn = new List<MoveMongo>(); 
                         bool evolvedThisTurn = false;
                         string learnedMove = "";
                         team.CurrXP += PokemonExperienceCalculator.ExpGained(wildPokemon, true, false, 0);
-                        team.CurrXP += 500;
                         team.HavePlayed = false;
                         int oldLevel = team.Level;
                         while (PokemonExperienceCalculator.ExpToNextLevel(team) < 0)
@@ -263,23 +325,67 @@
                     }
                     player.Team[i] = team;
                 }
+                if (!unexpectedEnd)
+                {
+                    player.Credits += player.Jackpot;
+                    player.Jackpot = 0;
+                }
+           
             }
             else
             {
-                foreach (var team in player.Team) {
+                for (int i = 0; i <= player.Team.Length; i++)
+                {
+                    PokemonTeam team = player.Team[i];
                     team.AtkChanges = 0;
                     team.AtkSpeChanges = 0;
                     team.DefChanges = 0;
                     team.DefSpeChanges = 0;
                     team.SpeedChanges = 0;
+                    team.CritChanges = 0;
                     team.CurrHp = team.BaseHp;
+                    team.SpecialCases = new();
+                    team.MultiTurnsMoveCount = null;
+                    team.MultiTurnsMove = null;
+                    team.CantUseMoves = new();
+                    team.WaitingMove = null;
+                    team.WaitingMoveTurns = null;
+                    team.Untargetable = null;
+                    team.BlowsTaken = 0;
+                    team.BlowsTakenType = null;
+                    team.IsConfused = 0;
+                    team.IsSleeping = 0;
+                    team.IsBurning = false;
+                    team.IsFrozen = false;
+                    team.IsParalyzed = false;
+                    team.IsPoisoned = 0;
+                    team.PoisonCount = null;
+                    if(team.ConvertedType != null)
+                    {
+                        team.Types[0].Name = team.ConvertedType;
+                        team.ConvertedType = null;
+                    }
+                    if (team.UnmorphedForm != null)
+                    {
+                        team = team.UnmorphedForm;
+                        team.UnmorphedForm = null;
+                    }
+                    if(team.SavedMove != null)
+                    {
+                        team.Moves[(int)team.SavedMoveSlot] = team.SavedMove;
+                        team.SavedMove = null;
+                        team.SavedMoveSlot = null;
+                    }
+                    player.Team[i] = team;
                 }
                 //Combat perdu go heal + diviser l'argent en 2
-                string message = "Vous n'avez plus de pokémon en forme, vous perdez X pokédolz";
+                int lostCredits = player.Credits / 2;
+                player.Credits = lostCredits;
+                string message = "Vous n'avez plus de pokémon en forme, vous perdez "+ lostCredits +" pokédolz";
                 await Clients.Caller.SendAsync("playerLooseFight", message);
                 await Task.Delay(3000);
-
             }
+
             await this._mongoPlayerRepository.UpdateAsync(player);
             await GetNewTurn(player._id);
         }
@@ -306,7 +412,8 @@
         {
             TurnContext turnContext = new TurnContext();
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(playerId);
-            PokemonTeam wildPokemon = await _mongoWildPokemonRepository.GetByIdAsync(wildPokemonId);
+            PokemonTeam wildPokemonMongo = await _mongoWildPokemonRepository.GetByIdAsync(wildPokemonId);
+
             PokemonTeamMove usedMove;
             if (usedMoveName.StartsWith("item:"))
             {
@@ -351,9 +458,33 @@
                 }
             }
 
-            PokemonTeam playerPokemon = await _mongoPlayerRepository.GetPlayerPokemonById(player._id, playerPokemonId);
-            playerPokemon.HavePlayed = true;
+
+
+            PokemonTeam playerPokemonMongo = await _mongoPlayerRepository.GetPlayerPokemonById(player._id, playerPokemonId);
+            playerPokemonMongo.HavePlayed = true;
+
+            PokemonTeam playerPokemon;
+            if(playerPokemonMongo.Substitute != null)
+            {
+                playerPokemon = (PokemonTeam)playerPokemonMongo.Substitute.Clone();
+            }
+            else
+            {
+                playerPokemon = (PokemonTeam)playerPokemonMongo.Clone();
+            }
+
+            PokemonTeam wildPokemon;
+            if(wildPokemonMongo.Substitute != null)
+            {
+                wildPokemon = (PokemonTeam)wildPokemonMongo.Substitute.Clone();
+            }
+            else
+            {
+                wildPokemon = (PokemonTeam)wildPokemonMongo.Clone();
+            }
+
             PokemonTeamMove opponentMove = AIChoseMove.GetARandomMove(wildPokemon);
+            //PokemonTeamMove opponentMove = AIChoseMove.GetThatMove(wildPokemon, "Charge");
             int catchValue = 0;
 
             playerPokemon = FightAilmentMove.TryRemoveAilment(playerPokemon, turnContext);
@@ -361,7 +492,18 @@
 
             if(FightPriority.IsPlayingFirst(playerPokemon, usedMove, wildPokemon, opponentMove))
             {//Joueur joue en premier
-                if(usedMove.Type == "item") turnContext.AddPrioMessage(player.Name + " utilise " + usedMove.NameFr);
+
+                if (usedMove.NameFr == "Métronome")
+                {
+                    turnContext.AddMessage(playerPokemon.NameFr + " lance Métronome");
+                    PokemonTeamMove newMove = PokemonMoveSelector.ConvertToTeamMove(await GetMoveExtApi.GetMetronomeMove());
+                    usedMove = newMove;
+                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                    await Task.Delay(CalculateDelay(turnContext));
+                    turnContext = new();
+                }
+
+                if (usedMove.Type == "item") turnContext.AddPrioMessage(player.Name + " utilise " + usedMove.NameFr);
                 else if(usedMove.Type == "swap") turnContext.AddPrioMessage(player.Name + " change de Pokémon");
                 else turnContext.AddPrioMessage(playerPokemon.NameFr + " lance " + usedMove.NameFr);
 
@@ -382,14 +524,38 @@
                     }
                     else
                     {
-                        PokemonTeam[] t1Result = FightPerformMove.PerformMove(playerPokemon, wildPokemon, usedMove, turnContext, true);
+                        if (FightPriority.MoveMustBePlayedLast(usedMove) || FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon))
+                        {
+                            turnContext.AddMessage("Mais cela michou");
+                        }
+                        else
+                        {   
+                            if(FightPerformMove.IsFieldChangeMove(usedMove)) player = FightPerformMove.FieldChangeMove(usedMove, player, turnContext);
 
-                        playerPokemon = t1Result[0];
-                        wildPokemon = t1Result[1];
+
+                            PokemonTeam[] t1Result = FightPerformMove.PerformMove(playerPokemon, wildPokemon, usedMove, wildPokemon.FieldChange, turnContext, true, player);
+                            playerPokemon = t1Result[0];
+                            wildPokemon = t1Result[1];
+                            PokemonTeam[] t1SpeCaseResult = FightPerformMove.PerformSpecialCaseMove(playerPokemon, wildPokemon, usedMove, turnContext);
+                            playerPokemon = t1SpeCaseResult[0];
+                            wildPokemon = t1SpeCaseResult[1];
+
+                            if(playerPokemon.Substitute != null)
+                            {
+                                playerPokemonMongo = (PokemonTeam)playerPokemon.Clone();
+                                playerPokemon = (PokemonTeam)playerPokemonMongo.Substitute.Clone();
+                            }
+
+                            if (await ManageSpecialCasesAfterMove(wildPokemon, playerPokemon, player, turnContext)) {
+                                await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext));
+                                return;
+                            } 
+                        }
                         await Clients.Caller.SendAsync("useMoveResult", turnContext);
                         await Task.Delay(CalculateDelay(turnContext));
                     }
-
                 }
                 
 
@@ -405,19 +571,68 @@
                     if (wildPokemon.CurrHp <= 0)//Pokémon mort
                     {
                         turnContext.AddPrioMessage(wildPokemon.NameFr + " est K.O");
-                        await Clients.Caller.SendAsync("deadOpponent", turnContext);
-                        await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
-                        await FinishFight(playerId, wildPokemonId);
-                        return;
+
+                        if (wildPokemon.Substitute != null)
+                        {
+                            wildPokemonMongo.Substitute = null;
+                            wildPokemon = wildPokemonMongo;
+                            await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                            await Task.Delay(CalculateDelay(turnContext));
+                        }
+                        else
+                        {
+                            await Clients.Caller.SendAsync("deadOpponent", turnContext);
+                            await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                            await FinishFight(playerId, wildPokemonId);
+                            return;
+                        }
                     }
                     else
                     {
                         if (!wildPokemon.IsFlinched)
                         {
+                            if (opponentMove.NameFr == "Métronome")
+                            {
+                                turnContext.AddMessage(wildPokemon.NameFr + " lance Métronome");
+                                PokemonTeamMove newMove = PokemonMoveSelector.ConvertToTeamMove(await GetMoveExtApi.GetMetronomeMove());
+                                opponentMove = newMove;
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext));
+                                turnContext = new();
+                            }
+                            if (opponentMove.NameFr == "Mimique")
+                            {
+                                turnContext.AddMessage(wildPokemon.NameFr + " lance Mimique");
+                                opponentMove = usedMove;
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext));
+                                turnContext = new();
+                            }
+
+
                             turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
-                            PokemonTeam[] t2Result = FightPerformMove.PerformMove(wildPokemon, playerPokemon, opponentMove, turnContext, false);
-                            playerPokemon = t2Result[1];
-                            wildPokemon = t2Result[0];
+                            if (FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon))
+                            {
+                                turnContext.AddMessage("Mais cela michou");
+                            }
+                            else
+                            {
+
+                                if (FightPerformMove.IsFieldChangeMove(opponentMove)) wildPokemon = FightPerformMove.FieldChangeMove(opponentMove, wildPokemon, turnContext);
+                                PokemonTeam[] t2Result = FightPerformMove.PerformMove(wildPokemon, playerPokemon, opponentMove, player.FieldChange, turnContext, false);
+                                playerPokemon = t2Result[1];
+                                wildPokemon = t2Result[0];
+                                PokemonTeam[] t2SpeCaseResult = FightPerformMove.PerformSpecialCaseMove(wildPokemon, playerPokemon, opponentMove, turnContext, usedMove);
+                                playerPokemon = t2SpeCaseResult[1];
+                                wildPokemon = t2SpeCaseResult[0];
+                                if (await ManageSpecialCasesAfterMove(wildPokemon, playerPokemon, player, turnContext))
+                                {
+                                    await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                    await Task.Delay(CalculateDelay(turnContext));
+                                    return;
+                                }
+                            }
                         }
                         else
                         {
@@ -426,12 +641,248 @@
 
 
                         playerPokemon = FightAilmentMove.SufferAilment(playerPokemon, turnContext);
+                        PokemonTeam[] specialCaseResponse1 = SufferSpecialCase(playerPokemon, wildPokemon, turnContext);
+                        specialCaseResponse1[0] = playerPokemon;
+                        specialCaseResponse1[1] = wildPokemon;
                         wildPokemon = FightAilmentMove.SufferAilment(wildPokemon, turnContext);
+                        PokemonTeam[] specialCaseResponse2 = SufferSpecialCase(wildPokemon, playerPokemon, turnContext);
+                        specialCaseResponse2[0] = wildPokemon;
+                        specialCaseResponse2[1] = playerPokemon;
+
+
 
                         await Clients.Caller.SendAsync("useMoveResult", turnContext);
                         await Task.Delay(CalculateDelay(turnContext));
                         turnContext = new();
                         if (playerPokemon.CurrHp <= 0)
+                        {
+                            string message = playerPokemon.NameFr + " est K.O";
+                            if(playerPokemonMongo.Substitute != null)
+                            {
+                                playerPokemonMongo.Substitute = null;
+                                playerPokemon = playerPokemonMongo;
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext));
+                            }
+                            else
+                            {
+                                await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                                if (player.Team.FirstOrDefault(x => x.CurrHp > 0) == null)
+                                {
+                                    await FinishFight(playerId, wildPokemonId);
+                                    return;
+                                }
+                                else
+                                {
+                                    await Clients.Caller.SendAsync("playerPokemonDeath", message);
+                                }
+                            }
+                        }
+                        if (wildPokemon.CurrHp <= 0)//Pokémon mort
+                        {
+                            turnContext.AddPrioMessage(wildPokemon.NameFr + " est K.O");
+
+                            if (wildPokemon.Substitute != null)
+                            {
+                                wildPokemonMongo.Substitute = null;
+                                wildPokemon = wildPokemonMongo;
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext));
+                            }
+                            else
+                            {
+                            await Clients.Caller.SendAsync("deadOpponent", turnContext);
+                            await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                            await FinishFight(playerId, wildPokemonId);
+                            return;
+                            }
+
+
+                        }
+                    }
+                }
+            }
+            else
+            {//IA joue en premier 
+                if (opponentMove.NameFr == "Métronome")
+                {
+                    turnContext.AddMessage(wildPokemon.NameFr + " lance Métronome");
+                    PokemonTeamMove newMove = PokemonMoveSelector.ConvertToTeamMove(await GetMoveExtApi.GetMetronomeMove());
+                    opponentMove = newMove;
+                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                    await Task.Delay(CalculateDelay(turnContext));
+                    turnContext = new();
+                }
+                turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
+                if (FightPriority.MoveMustBePlayedLast(opponentMove) || FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon))
+                {
+                    turnContext.AddMessage("Mais cela michou");
+                }
+                else
+                {
+
+                    if (FightPerformMove.IsFieldChangeMove(opponentMove)) wildPokemon = FightPerformMove.FieldChangeMove(opponentMove, wildPokemon, turnContext);
+                    PokemonTeam[] t1Result = FightPerformMove.PerformMove(wildPokemon, playerPokemon, opponentMove, player.FieldChange, turnContext, false);
+                    playerPokemon = t1Result[1];
+                    wildPokemon = t1Result[0];
+                    PokemonTeam[] t1SpeCaseResult = FightPerformMove.PerformSpecialCaseMove(wildPokemon, playerPokemon, usedMove, turnContext);
+                    playerPokemon = t1SpeCaseResult[1];
+                    wildPokemon = t1SpeCaseResult[0];
+                    if (await ManageSpecialCasesAfterMove(wildPokemon, playerPokemon, player, turnContext))
+                    {
+                        await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                        await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                        await Task.Delay(CalculateDelay(turnContext));
+                        return;
+                    }
+                }
+                int playerOldHp = playerPokemon.CurrHp;
+                int opponentOldHp = wildPokemon.CurrHp;
+                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                await Task.Delay(CalculateDelay(turnContext));
+                turnContext = new();
+                if (playerPokemon.CurrHp <= 0)
+                {
+                    string message = playerPokemon.NameFr + " est K.O";
+                    if (playerPokemonMongo.Substitute != null)
+                    {
+                        playerPokemonMongo.Substitute = null;
+                        playerPokemon = playerPokemonMongo;
+                        await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                        await Task.Delay(CalculateDelay(turnContext));
+                    }
+                    else
+                    {
+                        await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                        if (player.Team.FirstOrDefault(x => x.CurrHp > 0) == null)
+                        {
+                            await FinishFight(playerId, wildPokemonId);
+                            return;
+                        }
+                        else
+                        {
+                            await Clients.Caller.SendAsync("playerPokemonDeath", message);
+                        }
+                    }
+                }
+                else
+                {
+                    if (!playerPokemon.IsFlinched) {
+
+                        if (usedMove.NameFr == "Métronome")
+                        {
+                            turnContext.AddMessage(playerPokemon.NameFr + " lance Métronome");
+                            PokemonTeamMove newMove = PokemonMoveSelector.ConvertToTeamMove(await GetMoveExtApi.GetMetronomeMove());
+                            usedMove = newMove;
+                            await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                            await Task.Delay(CalculateDelay(turnContext));
+                            turnContext = new();
+                        }
+
+                        if (usedMove.NameFr == "Mimique")
+                        {
+                            turnContext.AddMessage(playerPokemon.NameFr + " lance Mimique");
+                            usedMove = opponentMove;
+                            await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                            await Task.Delay(CalculateDelay(turnContext));
+                            turnContext = new();
+                        }
+
+                        if (usedMove.NameFr == "Copie")
+                        {
+                            //opponentMove
+                            var move = playerPokemon.Moves.FirstOrDefault(o => o.NameFr== "Copie"); 
+
+                            int r = Array.IndexOf(playerPokemon.Moves, move);
+
+                            playerPokemon.SavedMove = move;
+                            playerPokemon.SavedMoveSlot = r;
+                            playerPokemon.Moves[r] = opponentMove;
+
+                        }
+
+                        turnContext.AddPrioMessage(playerPokemon.NameFr + " lance " + usedMove.NameFr);
+
+                        if(FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon))
+                        {
+                            turnContext.AddMessage("Mais cela michou");
+                        }
+                        else
+                        {
+
+                            if (FightPerformMove.IsFieldChangeMove(usedMove)) player = FightPerformMove.FieldChangeMove(usedMove, player, turnContext);
+                            PokemonTeam[] t2Result = FightPerformMove.PerformMove(playerPokemon, wildPokemon, usedMove, wildPokemon.FieldChange, turnContext, true, player);
+                            playerPokemon = t2Result[0];
+                            wildPokemon = t2Result[1];
+                            PokemonTeam[] t2SpeCaseResult = FightPerformMove.PerformSpecialCaseMove(playerPokemon, wildPokemon, usedMove, turnContext, opponentMove);
+                            playerPokemon = t2SpeCaseResult[0];
+                            wildPokemon = t2SpeCaseResult[1];
+                            if (await ManageSpecialCasesAfterMove(wildPokemon, playerPokemon, player, turnContext))
+                            {
+                                await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext));
+                                return;
+                            }
+                            player.FieldChangeCount--;
+                            if(player.FieldChangeCount <= 0)
+                            {
+                                player.FieldChangeCount = null;
+                                player.FieldChange = null;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        turnContext.AddPrioMessage("La peur empêche " + playerPokemon.NameFr + " d'attaquer");
+                    }
+
+
+
+
+                    playerPokemon = FightAilmentMove.SufferAilment(playerPokemon, turnContext);
+                    PokemonTeam[] specialCaseResponse1 = SufferSpecialCase(playerPokemon, wildPokemon, turnContext);
+                    specialCaseResponse1[0] = playerPokemon;
+                    specialCaseResponse1[1] = wildPokemon;
+                    wildPokemon = FightAilmentMove.SufferAilment(wildPokemon, turnContext);
+                    PokemonTeam[] specialCaseResponse2 = SufferSpecialCase(wildPokemon, playerPokemon, turnContext);
+                    specialCaseResponse2[0] = wildPokemon;
+                    specialCaseResponse2[1] = playerPokemon;
+
+                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                    await Task.Delay(CalculateDelay(turnContext));
+                    turnContext = new();
+                    if (wildPokemon.CurrHp <= 0)
+                    {
+                        turnContext.AddMessage(wildPokemon.NameFr + " est K.O");
+
+                        if (wildPokemon.Substitute != null)
+                        {
+                            wildPokemonMongo.Substitute = null;
+                            wildPokemon = wildPokemonMongo;
+                            await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                            await Task.Delay(CalculateDelay(turnContext));
+                        }
+                        else
+                        {
+                        await Clients.Caller.SendAsync("deadOpponent", turnContext);
+                        await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                        await FinishFight(playerId, wildPokemonId);
+                        return;
+                        }
+
+
+                    }
+                    if (playerPokemon.CurrHp <= 0)
+                    {
+                        if (playerPokemonMongo.Substitute != null)
+                        {
+                            playerPokemonMongo.Substitute = null;
+                            playerPokemon = playerPokemonMongo;
+                            await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                            await Task.Delay(CalculateDelay(turnContext));
+                        }
+                        else
                         {
                             string message = playerPokemon.NameFr + " est K.O";
                             await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
@@ -445,31 +896,88 @@
                                 await Clients.Caller.SendAsync("playerPokemonDeath", message);
                             }
                         }
-                        if (wildPokemon.CurrHp <= 0)//Pokémon mort
-                        {
-                            turnContext.AddPrioMessage(wildPokemon.NameFr + " est K.O");
-                            await Clients.Caller.SendAsync("deadOpponent", turnContext);
-                            await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
-                            await FinishFight(playerId, wildPokemonId);
-                            return;
-                        }
                     }
+                    turnContext = new();
                 }
             }
-            else
-            {//IA joue en premier 
-                turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
-                PokemonTeam[] t1Result = FightPerformMove.PerformMove(wildPokemon, playerPokemon, opponentMove, turnContext, false);
-                int playerOldHp = playerPokemon.CurrHp;
-                int opponentOldHp = wildPokemon.CurrHp;
-                playerPokemon = t1Result[1];
-                wildPokemon = t1Result[0];
+
+
+            if (wildPokemon.MultiTurnsMove != null)
+            {
+                PokemonTeam[] response = FightPerformMove.PerformMultiTurnMove(playerPokemon, wildPokemon, wildPokemon.MultiTurnsMove, turnContext);
+                playerPokemon = response[0];
+                wildPokemon = response[1];
+                wildPokemon.MultiTurnsMoveCount--;
+                if (wildPokemon.MultiTurnsMoveCount <= 0) {
+                    if (wildPokemon.MultiTurnsMove.NameFr == "Entrave") 
+                    {
+                        turnContext.AddPrioMessage(wildPokemon.CantUseMoves[0] + " n'est plus sous entrave");
+                        wildPokemon.CantUseMoves = []; 
+                    }
+                    wildPokemon.MultiTurnsMoveCount = null;
+                    wildPokemon.MultiTurnsMove = null;
+                }
                 await Clients.Caller.SendAsync("useMoveResult", turnContext);
                 await Task.Delay(CalculateDelay(turnContext));
                 turnContext = new();
-                if (playerPokemon.CurrHp <= 0)
+            }
+
+            if (wildPokemon.CurrHp <= 0)
+            {
+                turnContext.AddMessage(wildPokemon.NameFr + " est K.O");
+
+                if (wildPokemon.Substitute != null)
                 {
-                    string message = playerPokemon.NameFr + " est K.O";
+                    wildPokemonMongo.Substitute = null;
+                    wildPokemon = wildPokemonMongo;
+                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                    await Task.Delay(CalculateDelay(turnContext));
+                }
+                else
+                {
+                await Clients.Caller.SendAsync("deadOpponent", turnContext);
+                turnContext = new();
+                await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+                await FinishFight(playerId, wildPokemonId);
+                return;
+                }
+
+
+            }
+
+            if (playerPokemon.MultiTurnsMove != null)
+            {
+                PokemonTeam[] response = FightPerformMove.PerformMultiTurnMove(wildPokemon, playerPokemon, playerPokemon.MultiTurnsMove, turnContext);
+                wildPokemon = response[0];
+                playerPokemon = response[1];
+                playerPokemon.MultiTurnsMoveCount--;
+                if (playerPokemon.MultiTurnsMoveCount <= 0)
+                {
+                    if (playerPokemon.MultiTurnsMove.NameFr == "Entrave")
+                    {
+                        turnContext.AddPrioMessage(playerPokemon.CantUseMoves[0] + " n'est plus sous entrave");
+                        playerPokemon.CantUseMoves = [];
+                    }
+                    playerPokemon.MultiTurnsMoveCount = null;
+                    playerPokemon.MultiTurnsMove = null;
+                }
+                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                await Task.Delay(CalculateDelay(turnContext));
+                turnContext = new();
+            }
+
+            if (playerPokemon.CurrHp <= 0)
+            {
+                string message = playerPokemon.NameFr + " est K.O";
+                if (playerPokemonMongo.Substitute != null)
+                {
+                    playerPokemonMongo.Substitute = null;
+                    playerPokemon = playerPokemonMongo;
+                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                    await Task.Delay(CalculateDelay(turnContext));
+                }
+                else
+                {
                     await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
                     if (player.Team.FirstOrDefault(x => x.CurrHp > 0) == null)
                     {
@@ -481,61 +989,126 @@
                         await Clients.Caller.SendAsync("playerPokemonDeath", message);
                     }
                 }
-                else
-                {
-                    if (!playerPokemon.IsFlinched) {
-                        turnContext.AddPrioMessage(playerPokemon.NameFr + " lance " + usedMove.NameFr);
-                        PokemonTeam[] t2Result = FightPerformMove.PerformMove(playerPokemon, wildPokemon, usedMove, turnContext, true);
-                        playerPokemon = t2Result[0];
-                        wildPokemon = t2Result[1];
-                    }
-                    else
-                    {
-                        turnContext.AddPrioMessage("La peur empêche " + playerPokemon.NameFr + " d'attaquer");
-                    }
 
-                    playerPokemon = FightAilmentMove.SufferAilment(playerPokemon, turnContext);
-                    wildPokemon = FightAilmentMove.SufferAilment(wildPokemon, turnContext);
-                    await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                    await Task.Delay(CalculateDelay(turnContext));
-                    turnContext = new();
-                    if (wildPokemon.CurrHp <= 0)
-                    {
-                        turnContext.AddMessage(wildPokemon.NameFr + " est K.O");
+                turnContext = new();
+            }
 
-                        await Clients.Caller.SendAsync("deadOpponent", turnContext);
-                        await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
-                        await FinishFight(playerId, wildPokemonId);
-                        return;
-                    }
-                    if (playerPokemon.CurrHp <= 0)
-                    {
-                        string message = playerPokemon.NameFr + " est K.O";
-                        await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
-                        if (player.Team.FirstOrDefault(x => x.CurrHp > 0) == null)
-                        {
-                            await FinishFight(playerId, wildPokemonId);
-                            return;
-                        }
-                        else
-                        {
-                            await Clients.Caller.SendAsync("playerPokemonDeath", message);
-                        }
-                    }
-                }
+            wildPokemon.FieldChangeCount--;
+            if (wildPokemon.FieldChangeCount <= 0)
+            {
+                if (wildPokemon.FieldChange == "Brume") turnContext.AddMessage("La brume disparaît");
+                if (wildPokemon.FieldChange == "Mur Lumière") turnContext.AddMessage("Mur lumière n'est plus actif");
+                if (wildPokemon.FieldChange == "Protection") turnContext.AddMessage("Protection n'est plus actif");
+                wildPokemon.FieldChangeCount = null;
+                wildPokemon.FieldChange = null;
+                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                await Task.Delay(CalculateDelay(turnContext));
+                turnContext = new();
+            }
+            player.FieldChangeCount--;
+            if (player.FieldChangeCount <= 0)
+            {
+                if (player.FieldChange == "Brume") turnContext.AddMessage("La brume disparaît");
+                if (player.FieldChange == "Mur Lumière") turnContext.AddMessage("Mur lumière n'est plus actif");
+                if (player.FieldChange == "Protection") turnContext.AddMessage("Protection n'est plus actif");
+                player.FieldChangeCount = null;
+                player.FieldChange = null;
+                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                await Task.Delay(CalculateDelay(turnContext));
+                turnContext = new();
+            }
+
+            if (!FightDamageMove.NeedStackDamages(playerPokemon))
+            {
+                playerPokemon.BlowsTaken = 0;
             }
 
 
             playerPokemon.IsFlinched = false;
             wildPokemon.IsFlinched = false;
-            PlayerMongo updatedPlayer = await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
+            
+            if(playerPokemonMongo.Substitute != null)
+            {
+                playerPokemonMongo.Substitute = playerPokemon;
+            }
+            else
+            {
+                playerPokemonMongo = playerPokemon;
+            }
+            
+            PlayerMongo updatedPlayer = await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemonMongo, player);
             await _mongoWildPokemonRepository.UpdateAsync(wildPokemon);
-
 
             await Clients.Caller.SendAsync("turnFinished", updatedPlayer, wildPokemon);
 
         }
 
+        private PokemonTeam[] SufferSpecialCase(PokemonTeam user, PokemonTeam target, TurnContext turnContext)
+        {
+            foreach (string specialCase in target.SpecialCases)
+            {
+                switch (specialCase)
+                {
+                    case "Vampigraine":
+                        turnContext.AddMessage(user.NameFr + " draine l'énergie de " + target.NameFr);
+
+                        int damageDealt = 0;
+                        if (target.CurrHp > 16)
+                        {
+                            damageDealt = target.BaseHp / 8;
+                        }
+                        else
+                        {
+                            damageDealt = 1;
+                        }
+                        target.CurrHp -= damageDealt;
+                        if (target.CurrHp < 0) target.CurrHp = 0;
+                        user.CurrHp += damageDealt;
+                        if (user.CurrHp > user.BaseHp) user.CurrHp = user.BaseHp;
+                        break;
+                }
+            }
+            return [user, target];
+        }
+
+        private async Task<bool> ManageSpecialCasesAfterMove(PokemonTeam wildPokemon, PokemonTeam playerPokemon, PlayerMongo player, TurnContext turnContext)
+        {
+            foreach (string specialCase in playerPokemon.SpecialCases) {
+                switch (specialCase)
+                {
+                    case "Ejected":
+                        turnContext.AddMessage(wildPokemon.NameFr + " met fin au combat");
+                        await FinishFight(player._id, wildPokemon.Id, true);
+                        return true;
+                        break;
+                    case "Teleport":
+                        turnContext.AddMessage(wildPokemon.NameFr + " se téléporte");
+                        await FinishFight(player._id, wildPokemon.Id, true);
+                        return true;
+                        break;
+                }
+            }
+
+            foreach (string specialCase in wildPokemon.SpecialCases)
+            {
+                switch (specialCase)
+                {
+                    case "Ejected":
+                        turnContext.AddMessage(playerPokemon.NameFr + " met fin au combat");
+                        await FinishFight(player._id, wildPokemon.Id, true);
+                        return true;
+                        break;
+                    case "Teleport":
+                        turnContext.AddMessage(playerPokemon.NameFr + " se téléporte");
+                        await FinishFight(player._id, wildPokemon.Id, true);
+                        return true;
+                        break;
+                }
+            }
+
+            return false;
+
+        }
         public async Task DeleteMove(string playerId, int moveId)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(playerId);

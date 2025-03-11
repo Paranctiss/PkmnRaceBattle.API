@@ -51,7 +51,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             {
                 return 2.5;
             }
-            else if (pokemon.IsParalyzed || pokemon.IsBurning || pokemon.IsPoisoned)
+            else if (pokemon.IsParalyzed || pokemon.IsBurning || pokemon.IsPoisoned > 0)
             {
                 return 1.5;
             }

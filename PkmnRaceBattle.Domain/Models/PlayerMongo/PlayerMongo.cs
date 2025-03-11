@@ -21,6 +21,10 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string RoomId { get; set; }
         public bool IsHost { get; set; } = false;
         public PokemonTeam[] Team { get; set; }
+        public string? FieldChange { get; set; } = null;
+        public int? FieldChangeCount { get; set; } = null;
+        public int Credits { get; set; } = 3000;
+        public int Jackpot { get; set; } = 0;
         public BagItem[] Items { get; set; } = [new BagItem("Potion", 5), new BagItem("Pokeball", 5)];
         public int GetAverageLevel()
         {
@@ -44,8 +48,10 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         }
     }
 
-    public class PokemonTeam
+    public class PokemonTeam : ICloneable
     {
+        public string? FieldChange { get; set; } = null;
+        public int? FieldChangeCount { get; set; } = null;
         public string Id { get; set; }
         public int IdDex { get; set; }
         public string Name { get; set; }
@@ -67,6 +73,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int DefSpeChanges { get; set; } = 0;
         public int Speed { get; set; }
         public int SpeedChanges {  get; set; } = 0;
+        public int CritChanges { get; set; } = 0;
+        public int? Weight { get; set; }
         public int AccuracyChanges { get; set; } = 0;
         public int EvasionChanges { get; set; } = 0;
         public int TauxCapture { get; set; } = 0;
@@ -79,13 +87,47 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public bool IsBurning { get; set; } = false;
         public bool IsFrozen { get; set; } = false;
         public bool IsParalyzed { get; set; } = false;
-        public bool IsPoisoned { get; set; } = false;
+        public int IsPoisoned { get; set; } = 0;
+        public int? PoisonCount { get; set; } = null;
         public bool IsFlinched {  get; set; } = false;
         public bool HavePlayed {  get; set; } = false;
+        public string? Untargetable { get; set; } = null;
+        public int BlowsTaken { get; set; } = 0;
+        public string? BlowsTakenType { get; set; } = null;
+        public List<string> CantUseMoves { get; set; } = new List<string>();
+        public List<string> SpecialCases { get; set; } = new List<string>();
+        public int? WaitingMoveTurns { get; set; } = null;
+        public PokemonTeamMove? WaitingMove { get; set; } = null;
+        public int? MultiTurnsMoveCount { get; set; } = null;
+        public PokemonTeamMove? MultiTurnsMove { get; set; } = null;
         public EvolvesToMongo EvolutionDetails { get; set; }
         public TypeMongo[] Types { get; set; }
+        public string? ConvertedType { get; set; } = null;
 
         public PokemonTeamMove[] Moves { get; set; }
+        public PokemonTeamMove? SavedMove { get; set; }
+        public int? SavedMoveSlot { get; set; } = null;
+
+        public PokemonTeam? UnmorphedForm { get; set; } = null;
+
+        public PokemonTeam? Substitute { get; set; } = null;
+
+        public object Clone()
+        {
+            return this.MemberwiseClone();
+        }
+
+        public PokemonTeam CreateSubstitute(int hp)
+        {
+            PokemonTeam model = (PokemonTeam)this.MemberwiseClone();
+            model.NameFr = model.NameFr + " (Clone)";
+            model.BaseHp = hp;
+            model.CurrHp = hp;
+            model.BackSprite = "/assets/substituteback.png";
+            model.FrontSprite= "/assets/substitute.png";
+
+            return model;
+        }
     }
 
     public class PokemonTeamMove
@@ -100,6 +142,7 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string? Target { get; set; }
         public string Type { get; set; }
         public string DamageType { get; set; }
+        public int? BrutDamages { get; set; } = null;
         public string FlavorText { get; set; }
         public string Ailment { get; set; }
         public int AilmentChance { get; set; }

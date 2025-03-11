@@ -19,8 +19,4 @@
     <ProjectReference Include="..\PkmnRaceBattle.Application\PkmnRaceBattle.Application.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Helpers\" />
-  </ItemGroup>
-
 </Project>

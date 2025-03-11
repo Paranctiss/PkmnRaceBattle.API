@@ -7,7 +7,16 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         public static PokemonTeamMove GetARandomMove(PokemonTeam pokemon)
         {
             Random rand = new Random();
-            return pokemon.Moves[rand.Next(pokemon.Moves.Length)];
+            PokemonTeamMove[] moves = pokemon.Moves
+            .Where(x => !pokemon.CantUseMoves.Contains(x.NameFr))
+            .ToArray();
+            return moves[rand.Next(moves.Length)];
         }
+
+        public static PokemonTeamMove GetThatMove(PokemonTeam pokemon, string moveName)
+        {
+            return pokemon.Moves.FirstOrDefault(x => x.NameFr == moveName);
+        }
+
     }
 }
