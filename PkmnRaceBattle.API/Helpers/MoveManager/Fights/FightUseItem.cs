@@ -11,7 +11,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             switch (usedMove.NameFr)
             {
                 case "Potion":
-                    attacker = UsePotion(attacker, "Basic");
+                    attacker = UsePotion(attacker, "Basic", turnContext, playerAttacking);
                     break;
                 case "Pokeball":
                     break;
@@ -20,7 +20,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         }
 
 
-        public static PokemonTeam UsePotion(PokemonTeam pokemonTarget, string potionType)
+        public static PokemonTeam UsePotion(PokemonTeam pokemonTarget, string potionType, TurnContext turnContext, bool playerAttacking)
         {
             int givenHp = 0;
             switch (potionType)
@@ -35,9 +35,13 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     givenHp += 120;
                     break;
             }
-
+            int oldHp = pokemonTarget.CurrHp;
             pokemonTarget.CurrHp += givenHp;
             pokemonTarget.CurrHp = Math.Clamp(pokemonTarget.CurrHp, 0, pokemonTarget.BaseHp);
+
+            if (playerAttacking) turnContext.Player.Hp.Add(oldHp-pokemonTarget.CurrHp);
+            if (!playerAttacking) turnContext.Opponent.Hp.Add(oldHp - pokemonTarget.CurrHp);
+
             return pokemonTarget;
 
         }

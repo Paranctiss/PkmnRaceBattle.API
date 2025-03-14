@@ -17,6 +17,8 @@ namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
             Random rnd = new Random();
             int result = rnd.Next(512);
 
+            if (level <= 0) { level = 1; }
+
             if(pokemonBase.NameFr == "Goldy")
             {
                 level = 10;

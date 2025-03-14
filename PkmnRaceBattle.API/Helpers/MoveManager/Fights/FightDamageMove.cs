@@ -35,10 +35,11 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             if(defenser.CurrHp < 0) defenser.CurrHp = 0;
 
             int damagesTaken = oldDefHp - defenser.CurrHp;
-            attacker.CurrHp += SpecialCaseDrain(damagesTaken, move, attacker, defenser, turnContext);
+            //attacker.CurrHp += SpecialCaseDrain(damagesTaken, move, attacker, defenser, turnContext);
+            SpecialCaseDrain(damagesTaken, move, attacker, defenser, turnContext);
 
             defenser.BlowsTaken += damages;
-                defenser.BlowsTakenType = move.DamageType;
+            defenser.BlowsTakenType = move.DamageType;
 
             if (defenser.IsFrozen && move.Type == "fire")
             {
@@ -49,7 +50,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return [attacker, defenser];
         }
 
-        private static int SpecialCaseDrain(int damages, PokemonTeamMove move, PokemonTeam attacker, PokemonTeam defenser, TurnContext turnContext)
+        private static void SpecialCaseDrain(int damages, PokemonTeamMove move, PokemonTeam attacker, PokemonTeam defenser, TurnContext turnContext)
         {
             switch (move.NameFr)
             {
@@ -58,10 +59,8 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 case "Vampirisme":
                 case "Dévorêve":
                     turnContext.AddMessage("L'énergie du " + defenser.NameFr + "est drainée");
-                    return damages / 2;
                     break;
             }
-            return 0;
         }
 
         private static int CalculateDamage(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
@@ -309,7 +308,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
                 case "normal":
                     string[] normalWeakness = ["steel", "rock"];
-                    string[] normalNotEffective = ["gost"];
+                    string[] normalNotEffective = ["ghost"];
                     foreach (TypeMongo type in defenderTypes)
                     {
                         if (normalWeakness.Contains(type.Name)) weakScore++;

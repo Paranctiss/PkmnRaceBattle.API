@@ -17,5 +17,6 @@ namespace PkmnRaceBattle.Persistence.Models
 
         public string PlayerCollectionName { get; set; } = null;
         public string RoomCollectionName { get; set; } = null;
+        public string MoveCollectionName { get; set; } = null;
     }
 }

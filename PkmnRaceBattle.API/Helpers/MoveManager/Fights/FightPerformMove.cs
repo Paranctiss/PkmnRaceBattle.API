@@ -89,9 +89,6 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                     {
                                         int oldDefHp = defenser.CurrHp;
                                         PokemonTeam[] response = FightDamageMove.PerformDamageMove(attacker, defenser, usedMove, fieldChange, turnContext);
-
-
-
                                         if (playerAttacking)
                                         {
                                             turnContext.Opponent.Hp.Add(oldDefHp - response[1].CurrHp);
@@ -100,7 +97,6 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                         {
                                             turnContext.Player.Hp.Add(oldDefHp - response[1].CurrHp);
                                         }
-
                                         attacker = response[0];
                                         defenser = response[1];
                                     }
@@ -563,7 +559,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     turnContext.AddMessage(target.NameFr + " a désormais le type " + typeToAssign);
                     break;
                 case "Morphing":
-                    if(target.NameFr != "Métamorph")
+                    if(defenser.NameFr != "Métamorph")
                     {
                         PokemonTeam oldForm = (PokemonTeam)target.Clone();
 

@@ -15,9 +15,11 @@ namespace PkmnRaceBattle.Persistence.ExternalAPI
     public class PokemonExtAPI
     {
         private readonly IMongoPokemonRepository _dbService;
-        public PokemonExtAPI(IMongoPokemonRepository dbService)
+        private readonly IMongoMoveRepository _moveDbService;
+        public PokemonExtAPI(IMongoPokemonRepository dbService, IMongoMoveRepository moveDbService)
         {
             _dbService = dbService;
+            _moveDbService = moveDbService;
         }
         public async Task<bool> GetPokemonTest()
         {
@@ -47,16 +49,32 @@ namespace PkmnRaceBattle.Persistence.ExternalAPI
 
                 PokemonMongo pokemon = new PokemonMongo(pokemonJson);
 
-                if(pokemon.Id == 19)
-                {
-                    Console.WriteLine("dsdsqd");
-                }
-
                 await _dbService.CreateAsync(pokemon);
             }
             
 
             return true;
+        }
+
+        public async Task<bool> InsertAllMoves()
+        {
+            for (int i = 1; i<= 165; i++) 
+            { 
+                MovesJson moveJson = new MovesJson();
+                HttpClient client = new HttpClient();
+                HttpResponseMessage response = await client.GetAsync($"https://pokeapi.co/api/v2/move/{i}");
+                moveJson.move = new MoveJson();
+                moveJson.move.moveDetails = JsonConvert.DeserializeObject<MoveDetailsJson>(await response.Content.ReadAsStringAsync());
+
+                string json = JsonConvert.SerializeObject(moveJson);
+
+                MoveMongo move = new MoveMongo(moveJson);
+
+                await _moveDbService.CreateAsync(move);
+            }
+
+            return true;
+        
         }
 
         public async Task<bool> GetGoldy()

@@ -1,4 +1,5 @@
 ﻿using PkmnRaceBattle.Domain.Models.PlayerMongo;
+using System;
 
 namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 {
@@ -6,26 +7,58 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
     {
         public static int TryCatchPokemon(PokemonTeam pokemon, string pokeballType)
         {
-            double baseCaptureRate = pokemon.TauxCapture;
+            // 1. Calculer la valeur a
+            double maxHp = pokemon.BaseHp;
+            double currentHp = pokemon.CurrHp;
+            double catchRate = pokemon.TauxCapture;
+            double ballBonus = GetBallModifier(pokeballType);
+            double statusBonus = GetStatusModifier(pokemon);
 
-            double ballModifier = GetBallModifier(pokeballType);
+            // Formule standard pour calculer a (taux de capture)
+            double a = (((3 * maxHp - 2 * currentHp) * catchRate * ballBonus) / (3 * maxHp)) * statusBonus;
 
-            double hpModifier = (3.0 * pokemon.BaseHp - 2.0 * pokemon.CurrHp) / (3.0 * pokemon.BaseHp);
+            // Limiter a à 255 maximum
+            a = Math.Min(a, 255);
 
-            double statusModifier = GetStatusModifier(pokemon);
+            // 2. Calculer la probabilité de capture
+            // Probabilité = (a/255)^0.75 pour des raisons historiques
+            double catchProbability = Math.Pow(a / 255, 0.75);
 
-            double captureRate = (baseCaptureRate * ballModifier * hpModifier * statusModifier) / 3;
-
+            // 3. Effectuer la tentative de capture
             Random random = new Random();
-            double randomValue = random.NextDouble();
 
-            if (randomValue < captureRate)
+            // 4. Calculer le nombre de secousses si pas de capture immédiate
+            int shakeCount = 0;
+            bool caught = false;
+
+            for (int i = 0; i < 4; i++)
             {
-                return -1; // -1 signifie que le Pokémon est capturé
+                // Chaque secousse a la même probabilité
+                double shakeCheck = Math.Pow(a / 255, 0.1875);
+                if (random.NextDouble() <= shakeCheck)
+                {
+                    shakeCount++;
+                    if (shakeCount == 4)
+                    {
+                        caught = true;
+                    }
+                }
+                else
+                {
+                    // Si une secousse échoue, on arrête de compter
+                    break;
+                }
             }
 
-            int shakeCount = CalculateShakeCount(captureRate, random);
-            return shakeCount;
+            // Si Masterball, capture garantie
+            if (pokeballType == "Masterball")
+            {
+                caught = true;
+                shakeCount = 4;
+            }
+
+            // Renvoyer le résultat
+            return caught ? -1 : shakeCount;
         }
 
         private static double GetBallModifier(string pokeballType)
@@ -39,7 +72,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 case "Hyperball":
                     return 2.0;
                 case "Masterball":
-                    return 255.0;
+                    return 255.0; // En pratique, la Masterball est toujours 100% de réussite
                 default:
                     return 1.0;
             }
@@ -49,37 +82,33 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         {
             if (pokemon.IsSleeping > 0 || pokemon.IsFrozen)
             {
-                return 2.5;
+                return 2.5; // Endormi ou gelé
             }
             else if (pokemon.IsParalyzed || pokemon.IsBurning || pokemon.IsPoisoned > 0)
             {
-                return 1.5;
+                return 1.5; // Paralysé, brûlé ou empoisonné
             }
             else
             {
-                return 1.0;
+                return 1.0; // Aucun statut
             }
         }
 
-        private static int CalculateShakeCount(double captureRate, Random random)
+        // Méthode de calcul de pourcentage pour référence/debugging
+        public static double CalculateCatchProbabilityPercentage(PokemonTeam pokemon, string pokeballType)
         {
-            double shakeThreshold = Math.Pow(captureRate / 255, 0.25);
+            double maxHp = pokemon.BaseHp;
+            double currentHp = pokemon.CurrHp;
+            double catchRate = pokemon.TauxCapture;
+            double ballBonus = GetBallModifier(pokeballType);
+            double statusBonus = GetStatusModifier(pokemon);
 
-            int shakeCount = 0;
-            for (int i = 0; i < 4; i++)
-            {
-                if (random.NextDouble() < shakeThreshold)
-                {
-                    shakeCount++;
-                }
-                else
-                {
-                    break;
-                }
-            }
+            double a = (((3 * maxHp - 2 * currentHp) * catchRate * ballBonus) / (3 * maxHp)) * statusBonus;
+            a = Math.Min(a, 255);
 
-            return shakeCount;
+            double probability = Math.Pow(a / 255, 0.75) * 100; // Convertir en pourcentage
+
+            return Math.Round(probability, 2); // Arrondir à 2 décimales
         }
-
     }
 }
