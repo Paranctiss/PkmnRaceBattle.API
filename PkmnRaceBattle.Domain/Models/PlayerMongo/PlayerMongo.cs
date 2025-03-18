@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using PkmnRaceBattle.Domain.Models.PokemonJson;
+using System.Runtime.CompilerServices;
 
 namespace PkmnRaceBattle.Domain.Models.PlayerMongo
 {
@@ -20,6 +21,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string Sprite {  get; set; }
         public string RoomId { get; set; }
         public bool IsHost { get; set; } = false;
+        public bool IsPlayer { get; set; } = true;
+        public bool IsTrainer { get; set; } = true;
         public PokemonTeam[] Team { get; set; }
         public string? FieldChange { get; set; } = null;
         public int? FieldChangeCount { get; set; } = null;
@@ -34,6 +37,18 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
             }
             return teamLevel / Team.Length;
         }
+
+
+        public void GenerateWild()
+        {
+            Name = "Sauvage";
+            Sprite = string.Empty;
+            RoomId = string.Empty;
+            IsPlayer = false;
+            IsTrainer = false;
+            Items = [];
+        }
+
     }
 
     public class BagItem

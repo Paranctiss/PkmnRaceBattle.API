@@ -21,7 +21,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 if (usedMove.NameFr.EndsWith("ball"))
                 {
 
-                   
+
 
                 }
                 else

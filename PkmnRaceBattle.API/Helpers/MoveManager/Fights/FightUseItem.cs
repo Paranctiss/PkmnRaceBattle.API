@@ -8,14 +8,8 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         public static PokemonTeam[] UseItem(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove usedMove, TurnContext turnContext, bool playerAttacking)
         {
 
-            switch (usedMove.NameFr)
-            {
-                case "Potion":
-                    attacker = UsePotion(attacker, "Basic", turnContext, playerAttacking);
-                    break;
-                case "Pokeball":
-                    break;
-            }
+            if(usedMove.NameFr.Contains("Potion")) attacker = UsePotion(attacker, usedMove.NameFr, turnContext, playerAttacking);
+
             return [attacker, defenser];
         }
 
@@ -25,14 +19,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             int givenHp = 0;
             switch (potionType)
             {
-                case "Basic":
+                case "Potion":
                     givenHp = 20;
                     break;
-                case "Super":
+                case "Super Potion":
                     givenHp = 50;
                     break;
-                case "Hyper":
-                    givenHp += 120;
+                case "Hyper Potion":
+                    givenHp = 120;
                     break;
             }
             int oldHp = pokemonTarget.CurrHp;

@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/PkmnRaceBattle.API/appsettings.json
+/PkmnRaceBattle.API/appsettings.Development.json
