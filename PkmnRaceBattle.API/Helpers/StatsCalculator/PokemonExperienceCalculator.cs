@@ -38,14 +38,14 @@ namespace PkmnRaceBattle.API.Helpers.StatsCalculator
         }
 
 
-        public static int ExpGained(PokemonTeam defeatedPokemon, bool isWild, bool hasExpShare, int participantsCount)
+        public static int ExpGained(PokemonTeam defeatedPokemon, bool isTrainer, bool hasExpShare, int participantsCount)
         {
 
             int baseExp = defeatedPokemon.BaseXP;
             int level = defeatedPokemon.Level;
 
 
-            double wildModifier = isWild ? 1.0 : 1.5; 
+            double wildModifier = isTrainer ? 1.5 : 1.0; 
             double expShareModifier = hasExpShare ? 1.5 : 1.0; 
             //double participantsModifier = 1.0 / participantsCount; // Partage entre les Pokémon participants
 
