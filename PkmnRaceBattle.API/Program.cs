@@ -10,8 +10,8 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("http://0.0.0.0:5000", "https://0.0.0.0:5001");
-//builder.WebHost.UseUrls("http://localhost:7200", "https://localhost:7201");
+//builder.WebHost.UseUrls("http://0.0.0.0:5000", "https://0.0.0.0:5001");
+builder.WebHost.UseUrls("http://localhost:7200", "https://localhost:7201");
 
 // Add services to the container.
 

@@ -18,7 +18,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
             if(usedMove.Type == "item")
             {
-                if (usedMove.NameFr.EndsWith("ball"))
+                if (usedMove.DamageType == "ball")
                 {
 
 
