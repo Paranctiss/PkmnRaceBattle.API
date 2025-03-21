@@ -859,12 +859,12 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return multipliers[index];
         }
 
-        public static bool SpecialCaseFail(PokemonTeam attacker, PokemonTeamMove usedMove, PokemonTeam defenser)
+        public static bool SpecialCaseFail(PokemonTeam attacker, PokemonTeamMove attackerMove, PokemonTeam defenser, PokemonTeamMove defenserMove)
         {
-            switch (usedMove.NameFr)
+            switch (attackerMove.NameFr)
             {
                 case "Entrave":
-                    if (defenser.CantUseMoves.Count > 0) 
+                    if (defenser.CantUseMoves.Count > 0 || defenserMove.Type == "item" || defenserMove.Type == "swap")
                     {
                         return true;
                     }
