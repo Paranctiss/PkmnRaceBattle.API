@@ -322,6 +322,37 @@
                 return;
             }
 
+            pokemon = ResetForSwap(pokemon);
+            player.Team[0] = ResetForSwap(player.Team[0]);
+
+            PokemonTeam pokemonSwap = player.Team[0];
+
+            // Échanger les positions
+            int indexOfPokemon = Array.IndexOf(player.Team, pokemon);
+            
+            player.Team[0] = pokemon;
+            player.Team[indexOfPokemon] = pokemonSwap;
+
+
+            // Sauvegarder les modifications si nécessaire
+            await _mongoPlayerRepository.UpdateAsync(player);
+
+            if(pokemonSwap.CurrHp <= 0)
+            {
+                TurnContext turnContext = new TurnContext();
+                turnContext.AddMessage(player.Name + " envoie " + pokemon.NameFr);
+                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                await Clients.Caller.SendAsync("turnFinished", player, wildPokemon);
+            }
+            else
+            {
+                await UseMove(userId, pokemon.Id, "swap:", wildPokemonId, true);
+            }
+
+        }
+
+        private PokemonTeam ResetForSwap(PokemonTeam pokemon)
+        {
             pokemon.SpecialCases = new();
             pokemon.MultiTurnsMoveCount = null;
             pokemon.MultiTurnsMove = null;
@@ -341,13 +372,12 @@
             pokemon.CritChanges = 0;
             pokemon.EvasionChanges = 0;
             pokemon.AccuracyChanges = 0;
-
             if (pokemon.ConvertedType != null)
             {
                 pokemon.Types[0].Name = pokemon.ConvertedType;
                 pokemon.ConvertedType = null;
             }
-            if(pokemon.UnmorphedForm != null)
+            if (pokemon.UnmorphedForm != null)
             {
                 pokemon = pokemon.UnmorphedForm;
                 pokemon.UnmorphedForm = null;
@@ -382,6 +412,7 @@
                 await UseMove(userId, pokemon.Id, "swap:", wildOpponentId, wildPlayer.Team[0].Id, true);
             }
 
+            return pokemon;
         }
 
         public async Task FinishFight(string userId, string wildOpponentId, bool unexpectedEnd = false)
@@ -793,7 +824,7 @@
                     }
                     else
                     {
-                        if (FightPriority.MoveMustBePlayedLast(usedMove) || FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon))
+                        if (FightPriority.MoveMustBePlayedLast(usedMove) || FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon, opponentMove))
                         {
                             turnContext.AddMessage("Mais cela michou");
                         }
@@ -932,13 +963,13 @@
                                 }
 
 
-                                turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
-                                if (FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon))
-                                {
-                                    turnContext.AddMessage("Mais cela michou");
-                                }
-                                else
-                                {
+                            turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
+                            if (FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon, usedMove))
+                            {
+                                turnContext.AddMessage("Mais cela michou");
+                            }
+                            else
+                            {
 
                                     if (FightPerformMove.IsFieldChangeMove(opponentMove)) wildPokemon = FightPerformMove.FieldChangeMove(opponentMove, wildPokemon, turnContext);
                                     PokemonTeam[] t2Result = FightPerformMove.PerformMove(wildPokemon, playerPokemon, opponentMove, player.FieldChange, turnContext, false);
@@ -1043,7 +1074,7 @@
                     turnContext = new();
                 }
                 turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
-                if (FightPriority.MoveMustBePlayedLast(opponentMove) || FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon))
+                if (FightPriority.MoveMustBePlayedLast(opponentMove) || FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon, usedMove))
                 {
                     turnContext.AddMessage("Mais cela michou");
                 }
@@ -1135,7 +1166,7 @@
 
                         turnContext.AddPrioMessage(playerPokemon.NameFr + " lance " + usedMove.NameFr);
 
-                        if(FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon))
+                        if(FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon, opponentMove))
                         {
                             turnContext.AddMessage("Mais cela michou");
                         }

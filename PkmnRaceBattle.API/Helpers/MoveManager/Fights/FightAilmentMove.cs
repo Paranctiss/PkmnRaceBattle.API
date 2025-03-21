@@ -47,6 +47,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         turnContext.AddMessage(defenser.NameFr + " s'endort");
                         break;
                     case "confusion":
+                        if (defenser.IsConfused != 0) { turnContext.AddMessage(defenser.NameFr + " est déjà confus"); return defenser; }
                         Random rnde = new Random();
                         defenser.IsConfused = rnde.Next(1, 5);
                         turnContext.AddMessage("Cela rend " + defenser.NameFr + " confus");

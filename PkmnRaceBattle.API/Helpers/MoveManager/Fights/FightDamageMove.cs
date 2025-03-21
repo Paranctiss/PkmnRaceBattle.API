@@ -107,7 +107,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             double typeEffectiveness = CalculateTypeEffectiveness(move.Type, defenser.Types, turnContext);
             if (typeEffectiveness == 0.0) attacker = FightPerformMove.SpecialCaseMissMove(attacker, move, turnContext);
             double critical = 1.0;
-            if(IsCriticalHit(attacker, move))
+            if(move.NameFr != "Confusion" && IsCriticalHit(attacker, move))
             {
                 turnContext.AddMessage("Coup critique !");
                 critical = 1.5;
@@ -244,7 +244,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
                 case "fire":
                     string[] fireStrongness = ["steel", "ice", "bug", "grass"];
-                    string[] fireWeakness = ["dragon", "water", "fire"];
+                    string[] fireWeakness = ["dragon", "water", "fire", "rock"];
                     foreach (TypeMongo type in defenderTypes)
                     {
                         if (fireStrongness.Contains(type.Name)) strongScore++;
