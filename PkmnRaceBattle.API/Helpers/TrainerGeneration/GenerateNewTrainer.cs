@@ -23,7 +23,7 @@ namespace PkmnRaceBattle.API.Helpers.TrainerGeneration
             {
                 PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandom();
                 //PokemonMongo rndPokemon = await _mongoPokemonRepository.GetPokemonMongoById(58);
-                PokemonTeam generatedPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, 1, 2);
+                PokemonTeam generatedPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg-5, levelAvg-2);
                 teamList.Add(generatedPokemon);
             }
             trainer = GenerateTrainerInfos(trainer);

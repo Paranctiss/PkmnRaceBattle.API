@@ -32,7 +32,7 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
                 .Select(t => new TypeMongo(t))
                 .ToArray();
             Stats = new StatsMongo(pokemonJson.stats);
-            EvolutionDetails = new EvolvesToMongo(pokemonJson.species, pokemonJson.name);
+            EvolutionDetails = EvolvesToMongo.GetEvolutionDetails(pokemonJson.species, pokemonJson.name);
         }
 
         [BsonId]
@@ -62,7 +62,7 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
 
         public StatsMongo Stats {  get; set; }
 
-        public EvolvesToMongo EvolutionDetails { get; set; }
+        public EvolvesToMongo[] EvolutionDetails { get; set; }
 
     }
 
@@ -212,6 +212,70 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
 
     public class EvolvesToMongo
     {
+        public static EvolvesToMongo[] GetEvolutionDetails(SpeciesJson species, string pokemonName)
+        {
+            var evolutionChain = species.PokemonSpecies.evolution_chain.evolutions.chain;
+            var evolutions = new List<EvolvesToMongo>();
+
+            // Cas 1: Pokémon de base
+            if (evolutionChain.species.name == pokemonName)
+            {
+                // Parcourir toutes les évolutions possibles du Pokémon de base
+                foreach (var evolution in evolutionChain.evolves_to)
+                {
+                    evolutions.Add(new EvolvesToMongo(
+                        evolution.species.name,
+                        evolution.evolution_details[0].min_level,
+                        evolution.evolution_details[0].trigger.name,
+                        evolution.evolution_details[0].item?.name
+                    ));
+                }
+            }
+            // Cas 2: Première évolution
+            else
+            {
+                bool found = false;
+                foreach (var firstEvo in evolutionChain.evolves_to)
+                {
+                    if (firstEvo.species.name == pokemonName)
+                    {
+                        found = true;
+                        // Parcourir toutes les évolutions possibles de cette première évolution
+                        foreach (var secondEvo in firstEvo.evolves_to)
+                        {
+                            evolutions.Add(new EvolvesToMongo(
+                                secondEvo.species.name,
+                                secondEvo.evolution_details[0].min_level,
+                                secondEvo.evolution_details[0].trigger.name,
+                                secondEvo.evolution_details[0].item?.name
+                            ));
+                        }
+                        break;
+                    }
+                }
+
+                // Cas 3: Si ce n'est pas trouvé dans la première évolution, chercher dans la seconde
+                if (!found)
+                {
+                    foreach (var firstEvo in evolutionChain.evolves_to)
+                    {
+                        foreach (var secondEvo in firstEvo.evolves_to)
+                        {
+                            if (secondEvo.species.name == pokemonName)
+                            {
+                                // Les Pokémon de troisième évolution n'évoluent plus
+                                // Donc on retourne une liste vide
+                                return evolutions.ToArray();
+                            }
+                        }
+                    }
+                }
+            }
+
+            return evolutions.ToArray();
+        }
+        
+
         public EvolvesToMongo(SpeciesJson species, string pokemonName)
         {
             //Pokemon de base
@@ -222,12 +286,14 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
                     PokemonName = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].species.name;
                     MinLevel = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolution_details[0].min_level;
                     EvolutionTrigger = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolution_details[0].trigger.name;
+                    Item = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolution_details[0].item?.name;
                 }
                 else
                 {
                     PokemonName = null;
                     MinLevel = null;
                     EvolutionTrigger= null;
+                    Item = null;
                 }
             }
             else
@@ -240,12 +306,14 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
                         PokemonName = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolves_to[0].species.name;
                         MinLevel = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolves_to[0].evolution_details[0].min_level;
                         EvolutionTrigger = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolves_to[0].evolution_details[0].trigger.name;
+                        EvolutionTrigger = species.PokemonSpecies.evolution_chain.evolutions.chain.evolves_to[0].evolves_to[0].evolution_details[0].item?.name;
                     }
                     else
                     {
                         PokemonName = null;
                         MinLevel = null;
                         EvolutionTrigger = null;
+                        Item = null;
                     }
                 }
                 else //2ème évolution
@@ -253,14 +321,26 @@ namespace PkmnRaceBattle.Domain.Models.PokemonMongo
                     PokemonName = null;
                     MinLevel = null;
                     EvolutionTrigger = null;
+                    Item= null;
                 }
 
             }
         }
+
+        public EvolvesToMongo(string? pokemonName, int? minLevel, string? evolutionTrigger, string? item)
+        {
+            PokemonName = pokemonName;
+            MinLevel = minLevel;
+            EvolutionTrigger = evolutionTrigger;
+            Item = item;
+        }
+
         public string? PokemonName { get; set; } 
         public int? MinLevel { get; set; }
 
         public string? EvolutionTrigger { get; set; }
+
+        public string? Item { get; set; }
 
 
     }

@@ -57,11 +57,17 @@ namespace PkmnRaceBattle.Domain.Models.PokemonJson
     {
         public int? min_level { get; set; }
         public Trigger trigger { get; set; }
+        public Item? item { get; set; }
     }
 
     public class Trigger
     {
         public string name { get; set; }
+    }
+
+    public class Item
+    {
+        public string? name { get; set; }
     }
 
     public class GrowthRate {

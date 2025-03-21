@@ -28,7 +28,31 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int? FieldChangeCount { get; set; } = null;
         public int Credits { get; set; } = 3000;
         public int Jackpot { get; set; } = 0;
-        public BagItem[] Items { get; set; } = [new BagItem("Potion", 5), new BagItem("Pokeball", 5)];
+        public BagItem[] Items { get; set; } = [
+            new BagItem("Pokeball", 15, "ball", 200),
+            new BagItem("Superball", 10, "ball", 600),
+            new BagItem("Hyperball", 5, "ball", 1200),
+            new BagItem("Masterball", 999, "ball", 10000),
+            new BagItem("Potion", 10, "potion", 300), 
+            new BagItem("Super Potion", 10, "potion", 700), 
+            new BagItem("Hyper Potion", 10, "potion", 1500),
+            new BagItem("Potion Max", 5, "potion", 2500),
+            new BagItem("Guérison", 5, "potion", 3000),
+            new BagItem("Rappel", 5, "potion", 1500),
+            new BagItem("Rappel Max", 5, "potion", 5000),
+            new BagItem("Anti-Brûle", 5, "ailment", 250),
+            new BagItem("Anti-Para", 5, "ailment", 200),
+            new BagItem("Antidote", 5, "ailment", 100),
+            new BagItem("Antigel", 5, "ailment", 200),
+            new BagItem("Réveil", 5, "ailment", 200),
+            new BagItem("Total Soin", 5, "ailment", 600),
+            new BagItem("Pierre Eau", 3, "special", 2100),
+            new BagItem("Pierre Feu", 3, "special", 2100),
+            new BagItem("Pierre Foudre", 3, "special", 2100),
+            new BagItem("Pierre Lune", 3, "special", 2100),
+            new BagItem("Pierre Plante", 3, "special", 2100),
+            new BagItem("Super Bonbon", 999, "special", 5000),
+            ];
         public int GetAverageLevel()
         {
             int teamLevel = 0;
@@ -55,11 +79,16 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
     {
         public string Name { get; set; }
         public int Number { get; set; }
+        public int Price { get; set; }
+        public string Type { get; set; }
 
-        public BagItem(string name, int number)
+        public BagItem(string name, int number, string type, int price)
         {
             Name = name;
             Number = number;
+            Type = type;
+            Price = price;
+
         }
     }
 
@@ -115,7 +144,7 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public PokemonTeamMove? WaitingMove { get; set; } = null;
         public int? MultiTurnsMoveCount { get; set; } = null;
         public PokemonTeamMove? MultiTurnsMove { get; set; } = null;
-        public EvolvesToMongo EvolutionDetails { get; set; }
+        public EvolvesToMongo[] EvolutionDetails { get; set; }
         public TypeMongo[] Types { get; set; }
         public string? ConvertedType { get; set; } = null;
 
