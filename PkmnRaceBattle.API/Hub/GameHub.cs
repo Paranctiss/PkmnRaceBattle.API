@@ -5,6 +5,7 @@
     using Microsoft.AspNetCore.Components.Web;
     using Microsoft.AspNetCore.SignalR;
     using Microsoft.Extensions.Primitives;
+    using Microsoft.Owin.Security.Provider;
     using PkmnRaceBattle.API.Helper;
     using PkmnRaceBattle.API.Helpers.MoveManager;
     using PkmnRaceBattle.API.Helpers.MoveManager.Fights;
@@ -322,42 +323,10 @@
                 return;
             }
 
-            pokemon.SpecialCases = new();
-            pokemon.MultiTurnsMoveCount = null;
-            pokemon.MultiTurnsMove = null;
-            pokemon.CantUseMoves = new();
-            pokemon.WaitingMove = null;
-            pokemon.WaitingMoveTurns = null;
-            pokemon.Untargetable = null;
-            pokemon.BlowsTaken = 0;
-            pokemon.BlowsTakenType = null;
-            pokemon.IsConfused = 0;
-            pokemon.CritChanges = 0;
-            pokemon.AtkChanges = 0;
-            pokemon.AtkSpeChanges = 0;
-            pokemon.DefChanges = 0;
-            pokemon.DefSpeChanges = 0;
-            pokemon.SpeedChanges = 0;
-            pokemon.CritChanges = 0;
-            pokemon.EvasionChanges = 0;
-            pokemon.AccuracyChanges = 0;
+            pokemon = ResetForSwap(pokemon);
+            player.Team[0] = ResetForSwap(player.Team[0]);
 
-            if (pokemon.ConvertedType != null)
-            {
-                pokemon.Types[0].Name = pokemon.ConvertedType;
-                pokemon.ConvertedType = null;
-            }
-            if(pokemon.UnmorphedForm != null)
-            {
-                pokemon = pokemon.UnmorphedForm;
-                pokemon.UnmorphedForm = null;
-            }
-            if (pokemon.SavedMove != null)
-            {
-                pokemon.Moves[(int)pokemon.SavedMoveSlot] = pokemon.SavedMove;
-                pokemon.SavedMove = null;
-                pokemon.SavedMoveSlot = null;
-            }
+
             PokemonTeam pokemonSwap = player.Team[0];
 
             // Échanger les positions
@@ -384,6 +353,48 @@
 
         }
 
+        private static PokemonTeam ResetForSwap(PokemonTeam pokemon)
+        {
+            pokemon.SpecialCases = new();
+            pokemon.MultiTurnsMoveCount = null;
+            pokemon.MultiTurnsMove = null;
+            pokemon.CantUseMoves = new();
+            pokemon.WaitingMove = null;
+            pokemon.WaitingMoveTurns = null;
+            pokemon.Untargetable = null;
+            pokemon.BlowsTaken = 0;
+            pokemon.BlowsTakenType = null;
+            pokemon.IsConfused = 0;
+            pokemon.CritChanges = 0;
+            pokemon.AtkChanges = 0;
+            pokemon.AtkSpeChanges = 0;
+            pokemon.DefChanges = 0;
+            pokemon.DefSpeChanges = 0;
+            pokemon.SpeedChanges = 0;
+            pokemon.CritChanges = 0;
+            pokemon.EvasionChanges = 0;
+            pokemon.AccuracyChanges = 0;
+
+            if (pokemon.ConvertedType != null)
+            {
+                pokemon.Types[0].Name = pokemon.ConvertedType;
+                pokemon.ConvertedType = null;
+            }
+            if (pokemon.UnmorphedForm != null)
+            {
+                pokemon = pokemon.UnmorphedForm;
+                pokemon.UnmorphedForm = null;
+            }
+            if (pokemon.SavedMove != null)
+            {
+                pokemon.Moves[(int)pokemon.SavedMoveSlot] = pokemon.SavedMove;
+                pokemon.SavedMove = null;
+                pokemon.SavedMoveSlot = null;
+            }
+
+            return pokemon;
+        }
+
         public async Task FinishFight(string userId, string wildOpponentId, bool unexpectedEnd = false)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
@@ -392,11 +403,15 @@
             bool lost = false;
             if (unexpectedEnd && opponent.IsTrainer) {
                 if (player.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")) != null){
+                    player.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")).SpecialCases = new();
+                    _mongoPlayerRepository.UpdateAsync(player);
                     await Clients.Caller.SendAsync("playerPokemonDeath", "Changez de Pokémon");
                     return;
                 }
                 if (opponent.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")) != null)
                 {
+                    opponent.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")).SpecialCases = new();
+                    _mongoWildPokemonRepository.UpdateAsync(opponent);
                     await TrainerSendNextPokemon(player, opponent);
                     return;
                 }
@@ -570,20 +585,24 @@
                 
                 if (pokemonBase != null && pokemonBase.Moves.FirstOrDefault(x => x.LearnedAtLvl == team.Level) != null)
                 {
-                    if (team.Moves.Length < 4)
+                    MoveMongo moveMongo = pokemonBase.Moves.FirstOrDefault(x => x.LearnedAtLvl == team.Level);
+                    if(team.Moves.FirstOrDefault(x => x.NameFr == moveMongo.NameFr) == null)
                     {
-                        PokemonTeamMove move = PokemonMoveSelector.ConvertToTeamMove(pokemonBase.Moves.FirstOrDefault(x => x.LearnedAtLvl == team.Level));
+                        if (team.Moves.Length < 4)
+                        {
+                            PokemonTeamMove move = PokemonMoveSelector.ConvertToTeamMove(moveMongo);
 
-                        PokemonTeamMove[] newMoves = new PokemonTeamMove[team.Moves.Length + 1];
-                        Array.Copy(team.Moves, newMoves, team.Moves.Length);
-                        newMoves[newMoves.Length - 1] = move;
-                        team.Moves = newMoves;
-                        learnedMove = move.NameFr;
+                            PokemonTeamMove[] newMoves = new PokemonTeamMove[team.Moves.Length + 1];
+                            Array.Copy(team.Moves, newMoves, team.Moves.Length);
+                            newMoves[newMoves.Length - 1] = move;
+                            team.Moves = newMoves;
+                            learnedMove = move.NameFr;
 
-                    }
-                    else
-                    {
-                        movesToLearn.Add(pokemonBase.Moves.FirstOrDefault(x => x.LearnedAtLvl == team.Level));
+                        }
+                        else
+                        {
+                            movesToLearn.Add(moveMongo);
+                        }
                     }
                 }
 
@@ -793,7 +812,7 @@
                     }
                     else
                     {
-                        if (FightPriority.MoveMustBePlayedLast(usedMove) || FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon))
+                        if (FightPriority.MoveMustBePlayedLast(usedMove) || FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon, opponentMove))
                         {
                             turnContext.AddMessage("Mais cela michou");
                         }
@@ -810,10 +829,13 @@
                             wildPokemon = t1SpeCaseResult[1];
 
 
+                            if(usedMove.Type != "item")
+                            {
+                                await Clients.Caller.SendAsync("useMoveResult", turnContext);
+                                await Task.Delay(CalculateDelay(turnContext) + 500);
+                                turnContext = new();
+                            }
 
-                            await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                            await Task.Delay(CalculateDelay(turnContext) + 500);
-                            turnContext = new();
 
                             if (usedMove.Type == "item" && usedMove.DamageType == "special")
                             {
@@ -870,7 +892,14 @@
                                 await Task.Delay(CalculateDelay(turnContext)+500);
                                 await FinishFight(player._id, wildOpponentMongo._id, true);
                                 return;
-                            } 
+                            }
+                            else
+                            {
+                                if (wildPokemon.SpecialCases.Contains("Ejected")) wildPokemon.SpecialCases.Remove("Ejected");
+                                if (playerPokemon.SpecialCases.Contains("Ejected")) playerPokemon.SpecialCases.Remove("Ejected");
+                                if (wildPokemon.SpecialCases.Contains("Teleport")) wildPokemon.SpecialCases.Remove("Teleport");
+                                if (playerPokemon.SpecialCases.Contains("Teleport")) playerPokemon.SpecialCases.Remove("Ejected");
+                            }
                         }
                     }
                 }
@@ -882,6 +911,7 @@
                     await Task.Delay(4000);
                     wildOpponentMongo.Team[0] = wildPokemon;
                     await Clients.Caller.SendAsync("caughtPokemon", wildOpponentMongo);
+                    skipTurn = true;
                 }
                 else
                 {
@@ -933,7 +963,7 @@
 
 
                                 turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
-                                if (FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon))
+                                if (FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon, usedMove))
                                 {
                                     turnContext.AddMessage("Mais cela michou");
                                 }
@@ -955,6 +985,13 @@
                                         await Task.Delay(CalculateDelay(turnContext) + 500);
                                         await FinishFight(player._id, wildOpponentMongo._id, true);
                                         return;
+                                    }
+                                    else
+                                    {
+                                        if (wildPokemon.SpecialCases.Contains("Ejected")) wildPokemon.SpecialCases.Remove("Ejected");
+                                        if (playerPokemon.SpecialCases.Contains("Ejected")) playerPokemon.SpecialCases.Remove("Ejected");
+                                        if (wildPokemon.SpecialCases.Contains("Teleport")) wildPokemon.SpecialCases.Remove("Teleport");
+                                        if (playerPokemon.SpecialCases.Contains("Teleport")) playerPokemon.SpecialCases.Remove("Ejected");
                                     }
                                 }
                             }
@@ -1043,7 +1080,7 @@
                     turnContext = new();
                 }
                 turnContext.AddPrioMessage(wildPokemon.NameFr + " lance " + opponentMove.NameFr);
-                if (FightPriority.MoveMustBePlayedLast(opponentMove) || FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon))
+                if (FightPriority.MoveMustBePlayedLast(opponentMove) || FightPerformMove.SpecialCaseFail(wildPokemon, opponentMove, playerPokemon, usedMove))
                 {
                     turnContext.AddMessage("Mais cela michou");
                 }
@@ -1065,6 +1102,13 @@
                         await Task.Delay(CalculateDelay(turnContext) + 500);
                         await FinishFight(player._id, wildOpponentMongo._id, true);
                         return;
+                    }
+                    else
+                    {
+                        if (wildPokemon.SpecialCases.Contains("Ejected")) wildPokemon.SpecialCases.Remove("Ejected");
+                        if (playerPokemon.SpecialCases.Contains("Ejected")) playerPokemon.SpecialCases.Remove("Ejected");
+                        if (wildPokemon.SpecialCases.Contains("Teleport")) wildPokemon.SpecialCases.Remove("Teleport");
+                        if (playerPokemon.SpecialCases.Contains("Teleport")) playerPokemon.SpecialCases.Remove("Ejected");
                     }
                 }
                 int playerOldHp = playerPokemon.CurrHp;
@@ -1135,7 +1179,7 @@
 
                         turnContext.AddPrioMessage(playerPokemon.NameFr + " lance " + usedMove.NameFr);
 
-                        if(FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon))
+                        if(FightPerformMove.SpecialCaseFail(playerPokemon, usedMove, wildPokemon, opponentMove))
                         {
                             turnContext.AddMessage("Mais cela michou");
                         }
@@ -1157,6 +1201,13 @@
                                 await Task.Delay(CalculateDelay(turnContext) + 500);
                                 await FinishFight(player._id, wildOpponentMongo._id, true);
                                 return;
+                            }
+                            else
+                            {
+                                if (wildPokemon.SpecialCases.Contains("Ejected")) wildPokemon.SpecialCases.Remove("Ejected");
+                                if (playerPokemon.SpecialCases.Contains("Ejected")) playerPokemon.SpecialCases.Remove("Ejected");
+                                if (wildPokemon.SpecialCases.Contains("Teleport")) wildPokemon.SpecialCases.Remove("Teleport");
+                                if (playerPokemon.SpecialCases.Contains("Teleport")) playerPokemon.SpecialCases.Remove("Ejected");
                             }
 
                             player.FieldChangeCount--;

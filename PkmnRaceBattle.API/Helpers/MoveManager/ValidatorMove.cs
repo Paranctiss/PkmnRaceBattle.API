@@ -8,7 +8,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
     {
         public static bool IsEverythingOk(PlayerMongo player1, PokemonTeam pokemon1, PokemonTeamMove pokemon1Move, PlayerMongo player2, PokemonTeam pokemon2, PokemonTeamMove pokemon2Move, TurnContext turnContext)
         {
-            if(pokemon1.CurrHp <= 0 || pokemon2.CurrHp <= 0)
+            if(pokemon1Move.Type != "item" && pokemon1.CurrHp <= 0)
             {
                 turnContext.AddMessage("Un Pokémon K.O ne peut pas attaquer");
                 return false;
@@ -32,8 +32,19 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
                 return false;
             }
 
+            if(pokemon1Move.NameFr.Contains("ball") && pokemon2.Substitute != null)
+            {
+                turnContext.AddMessage("Cible invalide");
+                return false;
+            }
+
             if(pokemon1Move.Type == "item")
             {
+                if(pokemon1Move.NameFr == "Guérison" && (!FightUseItem.IsItemUseful(pokemon1, pokemon1Move.NameFr, turnContext) || pokemon1.CurrHp < pokemon1.BaseHp))
+                {
+                    return true;
+                }
+
                 if(pokemon1Move.DamageType == "ailment" && !FightUseItem.IsItemUseful(pokemon1, pokemon1Move.NameFr, turnContext)){
                     turnContext.AddMessage("Cela n'aura aucun effet");
                     return false;
@@ -53,7 +64,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
                         return false;
                     }
 
-                    if (pokemon1.CurrHp >= pokemon1.BaseHp ) 
+                    if (pokemon1.CurrHp >= pokemon1.BaseHp) 
                     {
                         turnContext.AddMessage(pokemon1.NameFr + " a déjà ses PV au max");
                         return false;
