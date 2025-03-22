@@ -33,41 +33,59 @@
         private readonly IMongoPokemonRepository _mongoPokemonRepository;
         private readonly IMongoWildPokemonRepository _mongoWildPokemonRepository;
         private readonly IMongoMoveRepository _mongoMoveRepository;
+        private readonly IHubContext<GameHub> _hubContext;
 
         public GameHub(
             IMongoRoomRepository mongoRoomRepository,
             IMongoMoveRepository mongoMoveRepository,
             IMongoPlayerRepository mongoPlayerRepository,
             IMongoPokemonRepository mongoPokemonRepository,
-            IMongoWildPokemonRepository mongoWildPokemonRepository)
+            IMongoWildPokemonRepository mongoWildPokemonRepository,
+            IHubContext<GameHub> hubContext
+            )
         {
             _mongoRoomRepository = mongoRoomRepository;
             _mongoPlayerRepository = mongoPlayerRepository;
             _mongoPokemonRepository = mongoPokemonRepository;
             _mongoWildPokemonRepository = mongoWildPokemonRepository;
             _mongoMoveRepository = mongoMoveRepository;
+            _hubContext = hubContext;
         }
 
 
         public async Task JoinGame(string username, int starterId, string trainerSprite, string gameCode)
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, gameCode);
+            // Vérifier si l'utilisateur est déjà dans une salle et l'en retirer
+            var (currentRoomId, existingUserId) = UserConnectionManager.GetUserRoomByConnectionId(Context.ConnectionId);
 
+            if (!string.IsNullOrEmpty(currentRoomId) && currentRoomId != gameCode && !string.IsNullOrEmpty(existingUserId))
+            {
+
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, currentRoomId);
+                UserConnectionManager.RemoveUserFromRoom(existingUserId, currentRoomId);
+
+
+                await Clients.Group(currentRoomId).SendAsync("UserLeft", currentRoomId);
+
+                // Éventuellement supprimer les données de l'utilisateur si nécessaire
+                if (!string.IsNullOrEmpty(existingUserId))
+                {
+
+                }
+            }
+
+            // Ajouter l'utilisateur à la nouvelle salle
+            await Groups.AddToGroupAsync(Context.ConnectionId, gameCode);
             PokemonMongo starterInfos = await _mongoPokemonRepository.GetPokemonMongoById(starterId);
             PokemonTeam pokemonTeam = GenerateNewPokemon.GenerateNewPokemonTeam(starterInfos, 5, 5);
-
             PlayerMongo playerMongo = new PlayerMongo();
             playerMongo.Name = username;
             playerMongo.RoomId = gameCode;
             playerMongo.Team = [pokemonTeam];
             playerMongo.IsHost = false;
-            Random rnd = new Random();
             playerMongo.Sprite = trainerSprite;
-
             string id = await _mongoPlayerRepository.CreateAsync(playerMongo);
-
             UserConnectionManager.AddUserToRoom(id, gameCode, Context.ConnectionId);
-
             await Clients.Caller.SendAsync("JoinSuccess", gameCode, id);
             await Clients.Group(gameCode).SendAsync("UserJoined", gameCode);
         }
@@ -81,7 +99,26 @@
 
         public async Task CreateGame(string username, int starterId, string trainerSprite)
         {
+
             var gameCode = Guid.NewGuid().ToString().Substring(0, 6).ToUpper();
+
+            var (currentRoomId, existingUserId) = UserConnectionManager.GetUserRoomByConnectionId(Context.ConnectionId);
+
+            if (!string.IsNullOrEmpty(currentRoomId) && currentRoomId != gameCode && !string.IsNullOrEmpty(existingUserId))
+            {
+
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, currentRoomId);
+                UserConnectionManager.RemoveUserFromRoom(existingUserId, currentRoomId);
+
+
+                await Clients.Group(currentRoomId).SendAsync("UserLeft", currentRoomId);
+
+                // Éventuellement supprimer les données de l'utilisateur si nécessaire
+                if (!string.IsNullOrEmpty(existingUserId))
+                {
+
+                }
+            }
 
             PokemonMongo starterInfos = await _mongoPokemonRepository.GetPokemonMongoById(starterId);
             /*  PokemonMongo pkmn= await _mongoPokemonRepository.GetPokemonMongoById(133);
@@ -134,13 +171,80 @@
             await Clients.Caller.SendAsync("GetPlayerResponse", playerMongo);
         }
 
-        public async Task StartGame(string gameCode)
+        private static readonly Dictionary<string, DateTime> _gameTimers = new Dictionary<string, DateTime>();
+        private static readonly Dictionary<string, Timer> _timerObjects = new Dictionary<string, Timer>();
+        public async Task StartGame(string gameCode, bool checkedTimer)
         {
             RoomMongo room = await _mongoRoomRepository.GetByRoomIdAsync(gameCode);
             room.state = 1;
             await _mongoRoomRepository.UpdateAsync(gameCode, room);
 
+            // Définir l'heure de fin (5 minutes à partir de maintenant)
+            DateTime endTime = DateTime.UtcNow.AddMinutes(10);
+            _gameTimers[gameCode] = endTime;
+
+            // Envoi du temps restant initial
             await Clients.Group(gameCode).SendAsync("GameStarted", gameCode);
+            if (checkedTimer)
+            {
+                await Clients.Group(gameCode).SendAsync("TimerUpdate", (endTime - DateTime.UtcNow).TotalSeconds);
+
+                // Utiliser _hubContext au lieu de Clients pour éviter les problèmes de contexte
+                Timer timer = new Timer(async _ =>
+                {
+                    try
+                    {
+                        double remainingSeconds = (_gameTimers[gameCode] - DateTime.UtcNow).TotalSeconds;
+
+                        if (remainingSeconds <= 0)
+                        {
+                            // Le temps est écoulé
+                            await _hubContext.Clients.Group(gameCode).SendAsync("TimerEnded", gameCode);
+
+                            if (_timerObjects.ContainsKey(gameCode))
+                            {
+                                _timerObjects[gameCode].Dispose();
+                                _timerObjects.Remove(gameCode);
+                            }
+
+                            _gameTimers.Remove(gameCode);
+                        }
+                        else
+                        {
+                            // Mettre à jour le timer pour tous les joueurs
+                            await _hubContext.Clients.Group(gameCode).SendAsync("TimerUpdate", remainingSeconds);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Gérer l'exception - logger ou autre
+                        Console.WriteLine($"Erreur lors de la mise à jour du timer: {ex.Message}");
+
+                        // Nettoyer les ressources en cas d'erreur
+                        if (_timerObjects.ContainsKey(gameCode))
+                        {
+                            _timerObjects[gameCode].Dispose();
+                            _timerObjects.Remove(gameCode);
+                        }
+
+                        _gameTimers.Remove(gameCode);
+                    }
+                }, null, 0, 1000);
+
+                _timerObjects[gameCode] = timer;
+            }
+        }
+
+        public async Task EndGame(string gameCode)
+        {
+            if (_timerObjects.ContainsKey(gameCode))
+            {
+                _timerObjects[gameCode].Dispose();
+                _timerObjects.Remove(gameCode);
+                _gameTimers.Remove(gameCode);
+            }
+
+            // Autres logiques de fin de jeu...
         }
 
         static bool first = true;
@@ -870,11 +974,11 @@
                             playerPokemon = await CheckLevelUp(playerPokemon);
                             player.Team[index] = playerPokemon;
 
-                            if (index != 0)
+                            if (usedMove.Type == "item")
                             {
                                 await this._mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
                                 await Clients.Caller.SendAsync("useItemResult", turnContext, index);
-                                playerPokemon = playerPokemonMongo;
+                                if(index!= 0) playerPokemon = playerPokemonMongo;
                                 await Task.Delay(CalculateDelay(turnContext) + 500);
                                 turnContext = new();
                             }
