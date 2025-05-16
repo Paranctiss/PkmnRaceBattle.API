@@ -20,6 +20,7 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string Name { get; set; }
         public string Sprite {  get; set; }
         public string RoomId { get; set; }
+        public string PvpRoomId { get; set; }
         public bool IsHost { get; set; } = false;
         public bool IsPlayer { get; set; } = true;
         public bool IsTrainer { get; set; } = true;
@@ -28,6 +29,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int? FieldChangeCount { get; set; } = null;
         public int Credits { get; set; } = 3000;
         public int Jackpot { get; set; } = 0;
+        public PokemonTeamMove? ChosenMove { get; set; } = null;
+        public int ChosenIndex { get; set; } = 0;
         public BagItem[] Items { get; set; } = [
             new BagItem("Pokeball", 15, "ball", 200),
             new BagItem("Superball", 10, "ball", 600),

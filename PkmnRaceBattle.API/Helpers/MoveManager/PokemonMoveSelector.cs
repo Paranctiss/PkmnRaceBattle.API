@@ -10,9 +10,10 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
 {
     public static class PokemonMoveSelector
     {
-        public static PokemonTeamMove[] SelectMoves(IEnumerable<MoveMongo> baseMoves, int level, bool goldy=false)
+        public static PokemonTeamMove[] SelectMoves(IEnumerable<MoveMongo> baseMoves, int level, bool goldy = false)
         {
-            if (goldy) {
+            if (goldy)
+            {
                 return baseMoves
                     .OrderByDescending(m => m.Id)
                     .Select(ConvertToTeamMove)
@@ -61,6 +62,54 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
                     Name = s.Name
                 }).ToArray()
             };
+        }
+
+        public static PokemonTeamMove ConvertToActionMove(string usedMoveName, int index)
+        {
+            PokemonTeamMove usedMove;
+            if (usedMoveName.StartsWith("item:"))
+            {
+
+                string[] itemProperties = usedMoveName.Split(':');
+                string name = itemProperties[1];
+                string type = itemProperties[2];
+
+                usedMove = new PokemonTeamMove
+                {
+                    Accuracy = 100,
+                    DamageType = type,
+                    NameFr = name,
+                    Power = 0,
+                    Pp = 1,
+                    Priority = 6,
+                    StatsChanges = [],
+                    Id = 0,
+                    Type = "item",
+                    Category = "item",
+                    Name = name,
+                    Target = index.ToString()
+                };
+            }
+            else
+            {
+                usedMove = new PokemonTeamMove
+                {
+                    Accuracy = 100,
+                    DamageType = "swap",
+                    NameFr = "swap",
+                    Power = 0,
+                    Pp = 1,
+                    Priority = 6,
+                    StatsChanges = [],
+                    Id = 0,
+                    Type = "swap",
+                    Name = "swap",
+                    Target = "swap",
+                    Category = "swap"
+                };
+            }
+
+            return usedMove;
         }
     }
 }
