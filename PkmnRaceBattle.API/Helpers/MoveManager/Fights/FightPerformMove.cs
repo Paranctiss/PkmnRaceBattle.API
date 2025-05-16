@@ -632,7 +632,10 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     target.SpecialCases.Add("Teleport");
                     break;
                 case "Vampigraine":
-                    if (target.Types.FirstOrDefault(x => x.Name == "grass") == null) target.SpecialCases.Add("Vampigraine");
+                    if (target.Types.FirstOrDefault(x => x.Name == "grass") == null 
+                        && target.SpecialCases.FirstOrDefault(x => x.Contains("Vampigraine")) != null)
+                        target.SpecialCases.Add("Vampigraine");
+
                     else turnContext.AddMessage("Mais cela michou");
                     break;
             }

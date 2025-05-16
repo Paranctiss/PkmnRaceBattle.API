@@ -9,7 +9,6 @@ using PkmnRaceBattle.Persistence.Services;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.WebHost.UseUrls("http://0.0.0.0:5000", "https://0.0.0.0:5001");
 //builder.WebHost.UseUrls("http://localhost:7200", "https://localhost:7201");
 
@@ -62,6 +61,12 @@ builder.Services.AddSingleton<IMongoMoveRepository>(sp =>
     var database = sp.GetRequiredService<IMongoDatabase>();
     var settings = sp.GetRequiredService<IOptions<MongoSettings>>().Value;
     return new MongoMoveRepository(database, settings.MoveCollectionName);
+});
+builder.Services.AddSingleton<IMongoBracketRepository>(sp =>
+{
+    var database = sp.GetRequiredService<IMongoDatabase>();
+    var settings = sp.GetRequiredService<IOptions<MongoSettings>>().Value;
+    return new MongoBracketRepository(database, settings.BracketCollectionName);
 });
 builder.Services.AddSingleton<PokemonExtAPI>();
 var app = builder.Build();
