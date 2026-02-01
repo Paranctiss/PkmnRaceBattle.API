@@ -25,9 +25,10 @@ namespace PkmnRaceBattle.API.Controllers
         [HttpGet(Name = "GetWeatherForecast")]
         public async Task<bool> Get()
         {
-            return await _api.GetPokemonTest();
+            //return await _api.GetPokemonTest();
+            return await _api.InsertEnvironments();
             //return await _api.InsertAllMoves();
-           //return await _api.GetGoldy();
+            //return await _api.GetGoldy();
         }
     }
 }

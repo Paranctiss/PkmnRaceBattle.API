@@ -68,6 +68,12 @@ builder.Services.AddSingleton<IMongoBracketRepository>(sp =>
     var settings = sp.GetRequiredService<IOptions<MongoSettings>>().Value;
     return new MongoBracketRepository(database, settings.BracketCollectionName);
 });
+builder.Services.AddSingleton<IMongoEnvironmentRepository>(sp =>
+{
+    var database = sp.GetRequiredService<IMongoDatabase>();
+    var settings = sp.GetRequiredService<IOptions<MongoSettings>>().Value;
+    return new MongoEnvironmentRepository(database, settings.EnvironmentCollectionName);
+});
 builder.Services.AddSingleton<PokemonExtAPI>();
 var app = builder.Build();
 
