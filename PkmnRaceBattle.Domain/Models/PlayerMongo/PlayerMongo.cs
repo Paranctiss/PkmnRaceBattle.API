@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using PkmnRaceBattle.Domain.Models.PokemonJson;
+using PkmnRaceBattle.Domain.Models.EnvironmentMongo;
 using System.Runtime.CompilerServices;
 
 namespace PkmnRaceBattle.Domain.Models.PlayerMongo
@@ -18,9 +19,13 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string _id { get; set; } = string.Empty;
         public int Id { get; set; }
         public string Name { get; set; }
-        public string Sprite {  get; set; }
+        public string Sprite { get; set; }
         public string RoomId { get; set; }
         public string PvpRoomId { get; set; }
+        public Path PlayerPath { get; set; }
+        public int CurrentX { get; set; }
+        public int CurrentY { get; set; }
+        public int CoordinateFightCount { get; set; }
         public bool IsHost { get; set; } = false;
         public bool IsPlayer { get; set; } = true;
         public bool IsTrainer { get; set; } = true;
@@ -36,8 +41,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
             new BagItem("Superball", 10, "ball", 600),
             new BagItem("Hyperball", 5, "ball", 1200),
             new BagItem("Masterball", 0, "ball", 10000),
-            new BagItem("Potion", 10, "potion", 300), 
-            new BagItem("Super Potion", 10, "potion", 700), 
+            new BagItem("Potion", 10, "potion", 300),
+            new BagItem("Super Potion", 10, "potion", 700),
             new BagItem("Hyper Potion", 10, "potion", 1500),
             new BagItem("Potion Max", 0, "potion", 2500),
             new BagItem("Guérison", 0, "potion", 3000),
@@ -112,14 +117,14 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int CurrHp { get; set; }
         public int Atk { get; set; }
         public int AtkChanges { get; set; } = 0;
-        public int AtkSpe {  get; set; }
+        public int AtkSpe { get; set; }
         public int AtkSpeChanges { get; set; } = 0;
         public int Def { get; set; }
         public int DefChanges { get; set; } = 0;
-        public int DefSpe {  get; set; }
+        public int DefSpe { get; set; }
         public int DefSpeChanges { get; set; } = 0;
         public int Speed { get; set; }
-        public int SpeedChanges {  get; set; } = 0;
+        public int SpeedChanges { get; set; } = 0;
         public int CritChanges { get; set; } = 0;
         public int? Weight { get; set; }
         public int AccuracyChanges { get; set; } = 0;
@@ -136,8 +141,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public bool IsParalyzed { get; set; } = false;
         public int IsPoisoned { get; set; } = 0;
         public int? PoisonCount { get; set; } = null;
-        public bool IsFlinched {  get; set; } = false;
-        public bool HavePlayed {  get; set; } = false;
+        public bool IsFlinched { get; set; } = false;
+        public bool HavePlayed { get; set; } = false;
         public string? Untargetable { get; set; } = null;
         public int BlowsTaken { get; set; } = 0;
         public string? BlowsTakenType { get; set; } = null;
@@ -171,7 +176,7 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
             model.BaseHp = hp;
             model.CurrHp = hp;
             model.BackSprite = "/assets/substituteback.png";
-            model.FrontSprite= "/assets/substitute.png";
+            model.FrontSprite = "/assets/substitute.png";
 
             return model;
         }
@@ -198,7 +203,7 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int Drain { get; set; }
         public int FlinchChance { get; set; }
         public int Healing { get; set; }
-        public int? MaxHits {  get; set; }
+        public int? MaxHits { get; set; }
         public int? MaxTurns { get; set; }
         public int? MinHits { get; set; }
         public int? MinTurns { get; set; }
@@ -213,4 +218,18 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int Changes { get; set; }
         public string Name { get; set; }
     }
+
+    public class Path
+    {
+        public List<PathPoint> PathPoints { get; set; }
+    }
+
+    public class PathPoint
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public string EnvironmentName { get; set; }
+    }
+
+
 }
