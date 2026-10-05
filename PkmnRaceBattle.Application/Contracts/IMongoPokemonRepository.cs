@@ -15,6 +15,8 @@ namespace PkmnRaceBattle.Application.Contracts
 
         public Task<PokemonMongo> GetRandom();
 
+        public Task<PokemonMongo> GetRandomByEnvironment(string  environment);
+
         public Task CreateAsync(PokemonMongo newPokemon);
 
         public Task UpdateAsync(int id, PokemonMongo updatedPokemon);

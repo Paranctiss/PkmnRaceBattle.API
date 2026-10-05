@@ -36,7 +36,7 @@ builder.Services.AddSingleton<IMongoPokemonRepository>(sp =>
 {
     var database = sp.GetRequiredService<IMongoDatabase>();
     var settings = sp.GetRequiredService<IOptions<MongoSettings>>().Value;
-    return new MongoPokemonRepository(database, settings.PokemonCollectionName);
+    return new MongoPokemonRepository(database, settings.PokemonCollectionName, settings.EnvironmentCollectionName);
 });
 builder.Services.AddSingleton<IMongoRoomRepository>(sp =>
 {

@@ -1,4 +1,5 @@
 ﻿using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -47,6 +48,7 @@ namespace PkmnRaceBattle.API.Hub
             playerMongo.Team = [pokemonTeam];
             playerMongo.IsHost = false;
             playerMongo.Sprite = trainerSprite;
+            PlayerPathHelper.InitPlayerPath(playerMongo);
             string id = await _mongoPlayerRepository.CreateAsync(playerMongo);
             UserConnectionManager.AddUserToRoom(id, gameCode, Context.ConnectionId);
             await Clients.Caller.SendAsync("JoinSuccess", gameCode, id);

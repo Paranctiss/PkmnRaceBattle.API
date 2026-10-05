@@ -12,6 +12,8 @@ using System.Runtime.CompilerServices;
 
 namespace PkmnRaceBattle.Domain.Models.PlayerMongo
 {
+    // Tolère les anciens champs encore présents en base (ex. CoordinateFightCount)
+    [BsonIgnoreExtraElements]
     public class PlayerMongo
     {
         [BsonId]
@@ -23,9 +25,9 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string RoomId { get; set; }
         public string PvpRoomId { get; set; }
         public Path PlayerPath { get; set; }
-        public int CurrentX { get; set; }
-        public int CurrentY { get; set; }
-        public int CoordinateFightCount { get; set; }
+        public PathPoint CurrentPath {  get; set; }
+        // Nombre de combats terminés sur la map courante (remis à 0 à chaque changement de map)
+        public int MapFightCount { get; set; } = 0;
         public bool IsHost { get; set; } = false;
         public bool IsPlayer { get; set; } = true;
         public bool IsTrainer { get; set; } = true;
@@ -229,6 +231,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int X { get; set; }
         public int Y { get; set; }
         public string EnvironmentName { get; set; }
+        // Branche non choisie par le joueur lors d'un embranchement (grisée sur la carte)
+        public bool IsSkipped { get; set; } = false;
     }
 
 

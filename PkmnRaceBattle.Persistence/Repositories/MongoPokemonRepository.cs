@@ -1,6 +1,7 @@
 ﻿using MongoDB.Driver;
 using PkmnRaceBattle.Application.Contracts;
 using PkmnRaceBattle.Domain.Models;
+using PkmnRaceBattle.Domain.Models.EnvironmentMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using PkmnRaceBattle.Persistence.Services;
 using System;
@@ -14,9 +15,11 @@ namespace PkmnRaceBattle.Persistence.Repositories
     public class MongoPokemonRepository : IMongoPokemonRepository
     {
         IMongoCollection<PokemonMongo> _pokemonCollection;
-        public MongoPokemonRepository(IMongoDatabase database, string collectionName) 
+        IMongoCollection<EnvironmentMongo> _environmentCollection;
+        public MongoPokemonRepository(IMongoDatabase database, string collectionName, string environmentCollectionName) 
         {
             _pokemonCollection = database.GetCollection<PokemonMongo>(collectionName);
+            _environmentCollection = database.GetCollection<EnvironmentMongo>(environmentCollectionName);
         }
         public async Task<PokemonMongo> GetPokemonMongoById(int id)
         {
@@ -43,6 +46,59 @@ namespace PkmnRaceBattle.Persistence.Repositories
                 .FirstOrDefaultAsync();
 
             return randomPokemon;
+        }
+
+        private static readonly Dictionary<string, int> RarityWeights = new()
+        {
+            { "Commun", 50 },
+            { "Peu commun", 30 },
+            { "Rare", 15 },
+            { "Très rare", 4 },
+            { "Légendaire", 1 }
+        };
+
+        public async Task<PokemonMongo?> GetRandomByEnvironment(string environment)
+        {
+            var environmentMongo = await _environmentCollection
+                .Find(x => x.Name == environment)
+                .FirstOrDefaultAsync();
+
+            if (environmentMongo == null || environmentMongo.PossiblePokemons == null)
+                return null;
+
+            // Tirage pondéré
+            var spawn = PickRandomPokemon(environmentMongo.PossiblePokemons);
+
+            // Récupération du Pokémon correspondant
+            var pokemon = await _pokemonCollection
+                .Find(p => p.Id == spawn.PokemonId)
+                .FirstOrDefaultAsync();
+
+            return pokemon;
+        }
+
+        private PokemonSpawn PickRandomPokemon(List<PokemonSpawn> pokemons)
+        {
+            if (pokemons == null || pokemons.Count == 0)
+                throw new ArgumentException("La liste de Pokémon est vide");
+
+            // Calcul du poids total
+            int totalWeight = pokemons.Sum(p => RarityWeights[p.Rareté]);
+
+            // Tirage aléatoire
+            int randomValue = Random.Shared.Next(0, totalWeight);
+
+            int cumulative = 0;
+            foreach (var pokemon in pokemons)
+            {
+                cumulative += RarityWeights[pokemon.Rareté];
+
+                if (randomValue < cumulative)
+                    return pokemon;
+            }
+
+            // Sécurité (ne devrait jamais arriver)
+            return pokemons.Last();
         }
 
         public async Task<List<PokemonMongo>> GetAsync() =>
