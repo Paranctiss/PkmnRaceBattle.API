@@ -1,4 +1,5 @@
 ﻿using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -47,6 +48,10 @@ namespace PkmnRaceBattle.API.Hub
                 }
             }
 
+            // Les effets de terrain ne survivent pas au combat
+            player.FieldChange = null;
+            player.FieldChangeCount = null;
+
             if (player.Team.FirstOrDefault(t => t.CurrHp > 0) != null)
             {
 
@@ -59,6 +64,11 @@ namespace PkmnRaceBattle.API.Hub
                     team.DefSpeChanges = 0;
                     team.SpeedChanges = 0;
                     team.CritChanges = 0;
+                    team.AccuracyChanges = 0;
+                    team.EvasionChanges = 0;
+                    team.IsFlinched = false;
+                    team.Substitute = null;
+                    if (team.IsPoisoned == 2) team.PoisonCount = 0;
                     team.SpecialCases = new();
                     team.MultiTurnsMoveCount = null;
                     team.MultiTurnsMove = null;
@@ -124,7 +134,7 @@ namespace PkmnRaceBattle.API.Hub
                             string message = "Vous n'avez plus de pokémon en forme, vous êtes éliminé.";
                             await Clients.Client(opponentConnectionId).SendAsync("playerLooseFight", message);
                         }
-                        await Task.Delay(turnContext.CalculateDelay());
+                        await GameDelay.Wait(turnContext.CalculateDelay());
                     }
                 }
 
@@ -140,6 +150,10 @@ namespace PkmnRaceBattle.API.Hub
                     team.DefSpeChanges = 0;
                     team.SpeedChanges = 0;
                     team.CritChanges = 0;
+                    team.AccuracyChanges = 0;
+                    team.EvasionChanges = 0;
+                    team.IsFlinched = false;
+                    team.Substitute = null;
                     team.CurrHp = team.BaseHp;
                     team.SpecialCases = new();
                     team.MultiTurnsMoveCount = null;
@@ -190,7 +204,7 @@ namespace PkmnRaceBattle.API.Hub
                     await Clients.Client(opponentConnectionId).SendAsync("useMoveResult", turnContext);
                 }
 
-                await Task.Delay(3000);
+                await GameDelay.Wait(3000);
             }
 
             // Un dresseur PvE à qui il reste des Pokémon continue le combat

@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.API.Helpers.PokemonGeneration;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Application.Contracts;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -34,7 +35,6 @@ namespace PkmnRaceBattle.API.Helpers.TrainerGeneration
 
         private static PlayerMongo GenerateTrainerInfos(PlayerMongo trainer)
         {
-            Random rnd = new Random();
             string[] names = ["Alex", "Bruno", "Clara", "Dylan", "Eva", "Fabien", "Gaëlle", "Hugo", "Inès", "Julien", "Katia", "Léo", "Morgane", "Nolan", "Océane", "Paul", "Quentin", "Romy", "Sacha", "Théo", "Ugo", "Valentine", "William", "Xavier", "Yasmine", "Zacharie", "Aurore", "Bastien", "Célia", "Damien", "Elise", "Florian", "Glod", "Gwendoline", "Henri", "Isabelle", "Joris", "Kelly", "Ludovic", "Manon", "Nathan", "Olivier", "Perrine", "Raphaël", "Soline", "Tanguy", "Ulysse", "Violette", "Wendy", "Xéna", "Zoé"];
             string[] sprites = [
       "aaron", "aarune", "acerola", "acetrainer", "acetrainer1", "acetrainer2", "acetrainer3", "acetrainerf", "acetrainerf1", "acetrainerf2", "acetrainerf3",
@@ -43,8 +43,8 @@ namespace PkmnRaceBattle.API.Helpers.TrainerGeneration
       "cynthia", "dawn", "delinquent", "elesa", "erika", "gardenia", "geeta", "ghetsis", "gladion", "gold", "hala", "iono", "iris", "leon", "lillie", "lucy", "misty", "n", "oak", "ogreclan",
       "red", "ryuki", "swimmer", "volo", "youngn", "zinnia"
     ];
-            trainer.Name = names[rnd.Next(names.Length)];
-            trainer.Sprite = sprites[rnd.Next(sprites.Length)];
+            trainer.Name = names[GameRandom.Next(RandomPurpose.Generation, names.Length)];
+            trainer.Sprite = sprites[GameRandom.Next(RandomPurpose.Generation, sprites.Length)];
             trainer.IsHost = false;
             trainer.IsPlayer = false;
             trainer.IsTrainer = true;

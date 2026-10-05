@@ -25,6 +25,10 @@ namespace PkmnRaceBattle.API.Helpers.PokemonStates
             pokemon.CritChanges = 0;
             pokemon.EvasionChanges = 0;
             pokemon.AccuracyChanges = 0;
+            pokemon.IsFlinched = false;
+            pokemon.Substitute = null;
+            // Toxik : le Pokémon reste gravement empoisonné mais les dégâts repartent de 1/16
+            if (pokemon.IsPoisoned == 2) pokemon.PoisonCount = 0;
 
             if (pokemon.ConvertedType != null)
             {

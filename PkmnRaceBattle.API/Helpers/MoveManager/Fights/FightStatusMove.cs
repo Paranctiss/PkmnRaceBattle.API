@@ -25,7 +25,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 }
             }
             return [attacker, defenser];
- 
+
 
         }
 
@@ -40,6 +40,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 else
                 {
                     string message = "";
+                    int before = GetStage(target, changes.Name);
                     switch (changes.Name)
                     {
                         case "attack":
@@ -97,13 +98,16 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
                     bool isPlayerTarget = playerAttacking ? targetMove == "user" : targetMove != "user";
 
+                    // Variation réelle après plafonnement à -6 / +6 (le client l'additionne à l'affichage)
+                    int applied = GetStage(target, changes.Name) - before;
+
                     if (isPlayerTarget)
                     {
-                        turnContext.Player.AddStatChange(changes.Name, changes.Changes);
+                        turnContext.Player.AddStatChange(changes.Name, applied);
                     }
                     else
                     {
-                        turnContext.Opponent.AddStatChange(changes.Name, changes.Changes);
+                        turnContext.Opponent.AddStatChange(changes.Name, applied);
                     }
 
                     turnContext.AddMessage(message);
@@ -112,5 +116,17 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
             return target;
         }
+
+        private static int GetStage(PokemonTeam pokemon, string stat) => stat switch
+        {
+            "attack" => pokemon.AtkChanges,
+            "special-attack" => pokemon.AtkSpeChanges,
+            "defense" => pokemon.DefChanges,
+            "special-defense" => pokemon.DefSpeChanges,
+            "speed" => pokemon.SpeedChanges,
+            "accuracy" => pokemon.AccuracyChanges,
+            "evasion" => pokemon.EvasionChanges,
+            _ => 0
+        };
     }
 }

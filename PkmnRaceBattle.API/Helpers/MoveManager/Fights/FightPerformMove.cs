@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using MongoDB.Driver;
 using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 
@@ -7,12 +8,12 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
     public static class FightPerformMove
     {
         public static PokemonTeam[] PerformMove(
-            PokemonTeam attacker, 
-            PokemonTeam defenser, 
-            PokemonTeamMove usedMove, 
-            string fieldChange, 
-            TurnContext turnContext, 
-            bool playerAttacking, 
+            PokemonTeam attacker,
+            PokemonTeam defenser,
+            PokemonTeamMove usedMove,
+            string fieldChange,
+            TurnContext turnContext,
+            bool playerAttacking,
             PlayerMongo player = null)
         {
 
@@ -33,14 +34,16 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             }
             else
             {
-                
+
                 bool isPlaying = FightAilmentMove.CanPokemonPlay(attacker, turnContext);
-                if (!isPlaying && attacker.IsConfused > 0) { 
+                if (!isPlaying && attacker.IsConfused > 0) {
+                    int hpBeforeConfusion = attacker.CurrHp;
                     attacker = FightAilmentMove.SufferConfusion(attacker, fieldChange, turnContext);
+                    AddHpChange(turnContext, playerAttacking, hpBeforeConfusion - attacker.CurrHp);
                 }
                 if (isPlaying)
                 {
-                    if (IsSucceedHisMove(attacker, defenser, usedMove)) {
+                    if (!IsTargetUntargetable(defenser, usedMove) && IsSucceedHisMove(attacker, defenser, usedMove)) {
                         if(player != null) player = MoveSpecialCasePlayer(usedMove, attacker, player, turnContext);
 
                         if (IsWaitingMove(usedMove) && attacker.WaitingMove == null)
@@ -50,13 +53,12 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         if(IsWaitingTurnTriggering(attacker, defenser, turnContext) || attacker.WaitingMove == null){
                             usedMove = IsSpecialCaseMove(usedMove, attacker, defenser, turnContext);
                             attacker = IsSpecialCasePokemonAttacker(usedMove, attacker, defenser, turnContext, playerAttacking);
-                            defenser = IsSpecialCasePokemonDefenser(usedMove, defenser, turnContext);
+                            defenser = IsSpecialCasePokemonDefenser(usedMove, defenser, turnContext, playerAttacking);
                             if (attacker.WaitingMoveTurns == 0)
                             {
                                 if(attacker.WaitingMove.NameFr == "Mania" || attacker.WaitingMove.NameFr == "Danse Fleurs")
                                 {
-                                    Random rnde = new Random();
-                                    attacker.IsConfused = rnde.Next(1, 5);
+                                    attacker.IsConfused = GameRandom.Next(RandomPurpose.Duration, 2, 6);
                                     turnContext.AddMessage("Cela rend " + attacker.NameFr + " confus");
                                 }
                                 attacker.WaitingMove = null;
@@ -67,13 +69,13 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
                             int nbHits = 1;
                             int nbDamageHit = 0;
+                            int damageDealt = 0;
                             if (usedMove.MinHits != null && usedMove.MaxHits != null)
                             {
-                                Random rnd = new Random();
-                                nbHits = rnd.Next((int)usedMove.MinHits, (int)usedMove.MaxHits + 1);
+                                nbHits = RollNumberOfHits((int)usedMove.MinHits, (int)usedMove.MaxHits);
                             }
 
-                            
+
                             if (usedMove.MinTurns != null && usedMove.MaxTurns != null) {
                                 PrepareMultiTurnAtk(attacker, defenser, usedMove, turnContext);
                             }
@@ -89,6 +91,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                     {
                                         int oldDefHp = defenser.CurrHp;
                                         PokemonTeam[] response = FightDamageMove.PerformDamageMove(attacker, defenser, usedMove, fieldChange, turnContext);
+                                        damageDealt += oldDefHp - response[1].CurrHp;
                                         if (playerAttacking)
                                         {
                                             turnContext.Opponent.Hp.Add(oldDefHp - response[1].CurrHp);
@@ -108,6 +111,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                 {
                                     int oldDefHp = defenser.CurrHp;
                                     PokemonTeam[] response = FightDamageMove.PerformDamageMove(attacker, defenser, usedMove, fieldChange, turnContext);
+                                    damageDealt += oldDefHp - response[1].CurrHp;
                                     if (playerAttacking)
                                     {
                                         turnContext.Opponent.Hp.Add(oldDefHp - response[1].CurrHp);
@@ -134,8 +138,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                 {
                                     if (usedMove.AilmentChance != 0)
                                     {
-                                        Random rnd = new Random();
-                                        int randomValue = rnd.Next(1, 101); // Génère un nombre aléatoire entre 1 et 100
+                                        int randomValue = GameRandom.Next(RandomPurpose.SecondaryEffect, 1, 101); // Génère un nombre aléatoire entre 1 et 100
 
                                         if (randomValue <= usedMove.AilmentChance)
                                         {
@@ -152,8 +155,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                             //Applique la peur ?
                             if (usedMove.FlinchChance != 0)
                             {
-                                Random random = new Random();
-                                int rnd = random.Next(1, 101);
+                                int rnd = GameRandom.Next(RandomPurpose.SecondaryEffect, 1, 101);
                                 if (rnd <= usedMove.FlinchChance)
                                 {
                                     defenser.IsFlinched = true;
@@ -166,8 +168,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                 bool useMove = true;
                                 if (usedMove.StatChance != 0)
                                 {
-                                    Random random = new Random();
-                                    int rnd = random.Next(1, 101);
+                                    int rnd = GameRandom.Next(RandomPurpose.SecondaryEffect, 1, 101);
                                     if (rnd > usedMove.StatChance)
                                     {
                                         useMove = false;
@@ -187,9 +188,21 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                     }
                                 }
                             }
-                        
-                            //Healing ? 
-                            if(usedMove.Healing > 0)
+
+                            //Healing ?
+                            if(usedMove.Healing > 0 && attacker.CurrHp >= attacker.BaseHp)
+                            {
+                                turnContext.AddMessage("Mais cela michou");
+                            }
+                            else if(usedMove.Healing < 0)
+                            {
+                                // Lutte : contrecoup en pourcentage des PV max
+                                int oldAtkHp = attacker.CurrHp;
+                                attacker.CurrHp = Math.Max(0, attacker.CurrHp - Math.Max(1, attacker.BaseHp * -usedMove.Healing / 100));
+                                AddHpChange(turnContext, playerAttacking, oldAtkHp - attacker.CurrHp);
+                                turnContext.AddMessage(attacker.NameFr + " se blesse");
+                            }
+                            else if(usedMove.Healing > 0)
                             {
                                 int oldAtkHp = attacker.CurrHp;
                                 double hpChange = attacker.BaseHp * (usedMove.Healing / 100.0);
@@ -204,30 +217,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                 if (!playerAttacking) turnContext.Opponent.Hp.Add(oldAtkHp - attacker.CurrHp);
                                 turnContext.AddMessage(attacker.NameFr + " récupère des PV");
                             }
-                            //Drain ?
-                            if(usedMove.Drain != 0)
+                            //Drain (> 0 : soigne une part des dégâts infligés) ou contrecoup (< 0 : blesse le lanceur)
+                            if(usedMove.Drain != 0 && damageDealt > 0)
                             {
-                                if (IsDrainSpecialCaseMove(usedMove))
-                                {
-                                    PokemonTeam[] response = DrainSpecialCaseMove(usedMove, attacker, defenser, turnContext, playerAttacking);
-                                    attacker = response[0];
-                                    defenser = response[1];
-                                }
-                                else
-                                {
-                                    int oldAtkHp = attacker.CurrHp;
-                                    double hpChange = attacker.BaseHp * (usedMove.Drain / 100.0);
-
-                                    attacker.CurrHp += (int)hpChange;
-
-                                    if (attacker.CurrHp > attacker.BaseHp)
-                                    {
-                                        attacker.CurrHp = attacker.BaseHp;
-                                    }
-
-                                    if (playerAttacking) turnContext.Player.Hp.Add(oldAtkHp - attacker.CurrHp);
-                                    if (!playerAttacking) turnContext.Opponent.Hp.Add(oldAtkHp - attacker.CurrHp);
-                                }
+                                int oldAtkHp = attacker.CurrHp;
+                                int hpChange = Math.Max(1, damageDealt * Math.Abs(usedMove.Drain) / 100);
+                                attacker.CurrHp = Math.Clamp(attacker.CurrHp + (usedMove.Drain > 0 ? hpChange : -hpChange), 0, attacker.BaseHp);
+                                AddHpChange(turnContext, playerAttacking, oldAtkHp - attacker.CurrHp);
+                                if (usedMove.Drain < 0) turnContext.AddMessage(attacker.NameFr + " se blesse");
                             }
 
                             defenser = SpecialCaseHits(nbDamageHit, defenser, playerAttacking, turnContext, fieldChange);
@@ -245,14 +242,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                                 attacker.WaitingMoveTurns = null;
                             }
                         }
-                       
+
                     }
                     else
                     {
                         turnContext.AddMessage(attacker.NameFr + " rate son attaque.");
                         attacker = SpecialCaseMissMove(attacker, usedMove, turnContext);
                     }
-                    
+
                 }
             }
 
@@ -280,36 +277,31 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return defenser;
         }
 
-        private static bool IsDrainSpecialCaseMove(PokemonTeamMove usedMove)
+        // Variation de PV envoyée au client (barre de vie) : positive = dégâts, négative = soin
+        public static void AddHpChange(TurnContext turnContext, bool playerSide, int change)
         {
-            string[] drainSpecialCaseMoves = ["Bélier", "Damoclès", "Sacrifice"];
-
-            if (drainSpecialCaseMoves.Contains(usedMove.NameFr)) return true;
-            return false;
+            if (change == 0) return;
+            if (playerSide) turnContext.Player.Hp.Add(change);
+            else turnContext.Opponent.Hp.Add(change);
         }
 
-        private static PokemonTeam[] DrainSpecialCaseMove(PokemonTeamMove usedMove, PokemonTeam attacker, PokemonTeam defenser, TurnContext turnContext, bool playerAttacking)
+        // 2 à 5 coups : 35 % / 35 % / 15 % / 15 % ; autres plages : uniforme
+        public static int RollNumberOfHits(int minHits, int maxHits)
         {
-            switch (usedMove.NameFr)
-            {
-                case "Bélier":
-                case "Damoclès":
-                case "Sacrifice":
-                    int oldHp = attacker.CurrHp;
-                    double hpChange = attacker.BaseHp * (usedMove.Drain / 100.0);
+            if (minHits != 2 || maxHits != 5) return GameRandom.Next(RandomPurpose.MultiHit, minHits, maxHits + 1);
+            int roll = GameRandom.Next(RandomPurpose.MultiHit, 0, 100);
+            if (roll < 35) return 2;
+            if (roll < 70) return 3;
+            if (roll < 85) return 4;
+            return 5;
+        }
 
-                    attacker.CurrHp += (int)hpChange;
-
-                    if (attacker.CurrHp > attacker.BaseHp)
-                    {
-                        attacker.CurrHp = attacker.BaseHp;
-                    }
-                    if (playerAttacking) turnContext.Player.Hp.Add(oldHp - attacker.CurrHp); 
-                    if (!playerAttacking) turnContext.Opponent.Hp.Add(oldHp - attacker.CurrHp); 
-                    turnContext.AddMessage(attacker.NameFr + "se blesse");
-                    break;
-            }
-            return [attacker, defenser];
+        // Cible en l'air (Vol) ou sous terre (Tunnel) : seules les capacités sur soi / le terrain la concernent
+        private static bool IsTargetUntargetable(PokemonTeam defenser, PokemonTeamMove move)
+        {
+            if (defenser.Untargetable == null) return false;
+            string[] selfTargets = ["user", "users-field", "entire-field", "user-or-ally", "ally"];
+            return !selfTargets.Contains(move.Target);
         }
 
         public static PokemonTeam SpecialCaseMissMove(PokemonTeam attacker, PokemonTeamMove usedMove, TurnContext turnContext)
@@ -354,13 +346,12 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 {
                     multiplicator = GetAccuracyMultiplier(attacker.AccuracyChanges) / GetAccuracyMultiplier(defenser.EvasionChanges);
                 }
-                
 
-                double? Preussite = move.Accuracy * multiplicator;
 
-                Random random = new Random();
-                int rnd = random.Next(random.Next(1, 101));
-                if (rnd <= Preussite.Value)
+                double Preussite = accuracy * multiplicator;
+
+                int rnd = GameRandom.Next(RandomPurpose.Accuracy, 1, 101);
+                if (rnd <= Preussite)
                 {
                     return true;
                 }
@@ -379,14 +370,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         public static bool IsWaitingMove(PokemonTeamMove move)
         {
             string[] waitingTurnsMoves = [
-                "Coupe-Vent", 
-                "Vol", 
-                "Tunnel", 
-                "Coud’Krâne", 
-                "Patience", 
-                "Piqué", 
-                "Mania", 
-                "Danse Fleurs", 
+                "Coupe-Vent",
+                "Vol",
+                "Tunnel",
+                "Coud’Krâne",
+                "Patience",
+                "Piqué",
+                "Mania",
+                "Danse Fleurs",
                 "Ultralaser",
                 "Lance-Soleil"
                 ];
@@ -427,45 +418,45 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     move.BrutDamages = 40;
                     break;
                 case "Croc Fatal":
-                    move.BrutDamages = defenser.CurrHp / 2;
+                    move.BrutDamages = Math.Max(1, defenser.CurrHp / 2);
                     break;
                 case "Vague Psy":
-                    Random rnd = new Random();
-                    int random = rnd.Next(1, 11);
+                    int random = GameRandom.Next(RandomPurpose.SpecialMove, 1, 11);
                     move.BrutDamages = attacker.Level * (random + 5) / 10;
                     break;
                 case "Balayage":
-                    if (defenser.Weight == null)
+                    double? weightKg = defenser.Weight / 10.0;
+                    if (weightKg == null)
                     {
                         move.Power = 20;
                         break;
                     }
-                    if (defenser.Weight < 10)
+                    if (weightKg < 10)
                     {
                         move.Power = 20;
                         break;
                     }
-                    if (defenser.Weight < 25)
+                    if (weightKg < 25)
                     {
                         move.Power = 40;
                         break;
                     }
-                    if (defenser.Weight < 50)
+                    if (weightKg < 50)
                     {
                         move.Power = 60;
                         break;
                     }
-                    if (defenser.Weight < 100)
+                    if (weightKg < 100)
                     {
                         move.Power = 80;
                         break;
                     }
-                    if (defenser.Weight < 200)
+                    if (weightKg < 200)
                     {
                         move.Power = 100;
                         break;
                     }
-                    if (defenser.Weight > 200)
+                    if (weightKg >= 200)
                     {
                         move.Power = 120;
                         break;
@@ -473,7 +464,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     break;
                 case "Frappe Atlas":
                 case "Ombre Nocturne":
-                    move.Power = attacker.Level;
+                    move.BrutDamages = attacker.Level;
                     break;
                 case "Buée Noire":
                     ResetStats(attacker);
@@ -481,8 +472,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     turnContext.AddMessage("Les statistiques des Pokémons sur le terrain est réinitialisé");
                     break;
                 case "Triplattaque":
-                    Random rand = new Random();
-                    int rndV = rand.Next(1, 10001);
+                    int rndV = GameRandom.Next(RandomPurpose.SpecialMove, 1, 10001);
                     if (rndV <= 667)
                     {
                         move.Ailment = "burn";
@@ -490,7 +480,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     }
                     else
                     {
-                        rndV = rand.Next(1, 10001);
+                        rndV = GameRandom.Next(RandomPurpose.SpecialMove, 1, 10001);
                         if (rndV <= 667)
                         {
                             move.Ailment = "freeze";
@@ -498,7 +488,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         }
                         else
                         {
-                            rndV = rand.Next(1, 10001);
+                            rndV = GameRandom.Next(RandomPurpose.SpecialMove, 1, 10001);
                             if (rndV <= 667)
                             {
                                 move.Ailment = "paralysis";
@@ -532,8 +522,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
             switch (usedMove.NameFr) {
                 case "Repos":
+                        if (target.CurrHp >= target.BaseHp)
+                        {
+                            turnContext.AddMessage("Mais cela michou");
+                            return target;
+                        }
                         target.IsSleeping = 3;
                         target = FightAilmentMove.RemoveAllAilments(target, "sleep");
+                        AddHpChange(turnContext, playerAttacking, target.CurrHp - target.BaseHp);
                         target.CurrHp = target.BaseHp;
                         return target;
                     break;
@@ -541,6 +537,9 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     turnContext.AddMessage(target.NameFr + " entre en frénésie");
                     target.SpecialCases.Add("Frénésie");
                     return target;
+                    break;
+                case "Trempette":
+                    turnContext.AddMessage("Mais rien ne se passe");
                     break;
                 case "Puissance":
                     turnContext.AddMessage("La chance de coups critiques de " + target.NameFr + " augmente");
@@ -572,11 +571,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         target.FrontSprite = defenser.FrontSprite;
                         target.BackSprite = defenser.BackSprite;
                         target.Types = defenser.Types;
-                        target.Moves = defenser.Moves;
-                        foreach (PokemonTeamMove move in target.Moves)
-                        {
-                            move.Pp = 5;
-                        }
+                        target.Moves = defenser.Moves.Select(m => { PokemonTeamMove copy = m.Copy(); copy.Pp = 5; return copy; }).ToArray();
+                        target.AtkChanges = defenser.AtkChanges;
+                        target.AtkSpeChanges = defenser.AtkSpeChanges;
+                        target.DefChanges = defenser.DefChanges;
+                        target.DefSpeChanges = defenser.DefSpeChanges;
+                        target.SpeedChanges = defenser.SpeedChanges;
+                        target.AccuracyChanges = defenser.AccuracyChanges;
+                        target.EvasionChanges = defenser.EvasionChanges;
                         target.Weight = defenser.Weight;
                         target.IsShiny = defenser.IsShiny;
                         target.UnmorphedForm.UnmorphedForm = null;
@@ -593,6 +595,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         if(target.CurrHp > target.BaseHp / 4)
                         {
                             target.CurrHp -= target.BaseHp / 4;
+                            AddHpChange(turnContext, playerAttacking, target.BaseHp / 4);
                             target.Substitute = target.CreateSubstitute(target.BaseHp / 4);
                             turnContext.AddMessage(target.NameFr + " invoque un clone de lui");
                         }
@@ -600,7 +603,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         {
                             turnContext.AddMessage("Mais cela michou");
                         }
-                        
+
                     }
                     else
                     {
@@ -613,7 +616,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return target;
         }
 
-        public static PokemonTeam IsSpecialCasePokemonDefenser(PokemonTeamMove usedMove, PokemonTeam target, TurnContext turnContext)
+        public static PokemonTeam IsSpecialCasePokemonDefenser(PokemonTeamMove usedMove, PokemonTeam target, TurnContext turnContext, bool playerAttacking = true)
         {
             switch (usedMove.NameFr)
             {
@@ -621,6 +624,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 case "Empal’Korne":
                 case "Abîme":
                     turnContext.AddMessage("K.O en un coup");
+                    AddHpChange(turnContext, !playerAttacking, target.CurrHp);
                     target.CurrHp = 0;
                     return target;
                     break;
@@ -632,8 +636,8 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     target.SpecialCases.Add("Teleport");
                     break;
                 case "Vampigraine":
-                    if (target.Types.FirstOrDefault(x => x.Name == "grass") == null 
-                        && target.SpecialCases.FirstOrDefault(x => x.Contains("Vampigraine")) != null)
+                    if (target.Types.FirstOrDefault(x => x.Name == "grass") == null
+                        && target.SpecialCases.FirstOrDefault(x => x.Contains("Vampigraine")) == null)
                         target.SpecialCases.Add("Vampigraine");
 
                     else turnContext.AddMessage("Mais cela michou");
@@ -670,8 +674,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     break;
                 case "Mania":
                 case "Danse Fleurs":
-                    Random rnd = new Random();
-                    attacker.WaitingMoveTurns = rnd.Next(2,4);
+                    attacker.WaitingMoveTurns = GameRandom.Next(RandomPurpose.Duration, 2, 4);
                     break;
                 default:
                     attacker.WaitingMoveTurns = null;
@@ -759,8 +762,6 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
         public static PokemonTeam[] PrepareMultiTurnAtk(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
         {
-            Random rnd = new Random();
-            
             switch (move.NameFr)
             {
                 case "Étreinte":
@@ -771,7 +772,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     if(defenser.MultiTurnsMove == null)
                     {
                         defenser.MultiTurnsMove = move;
-                        defenser.MultiTurnsMoveCount = rnd.Next((int)move.MinTurns, (int)move.MaxTurns + 1);
+                        defenser.MultiTurnsMoveCount = GameRandom.Next(RandomPurpose.Duration, (int)move.MinTurns, (int)move.MaxTurns + 1);
                         turnContext.AddMessage(defenser.NameFr + " " + GetMultiTurnFlavor(move));
                     }
                     break;
@@ -800,7 +801,16 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             }
         }
 
-        public static PokemonTeam[] PerformMultiTurnMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
+        public static PokemonTeam[] PerformMultiTurnMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext, bool defenserIsPlayer = false)
+        {
+            int hpBefore = defenser.CurrHp;
+            PokemonTeam[] result = ApplyMultiTurnMove(attacker, defenser, move, turnContext);
+            if (defenser.CurrHp < 0) defenser.CurrHp = 0;
+            AddHpChange(turnContext, defenserIsPlayer, hpBefore - defenser.CurrHp);
+            return result;
+        }
+
+        private static PokemonTeam[] ApplyMultiTurnMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
         {
             switch (move.NameFr)
             {

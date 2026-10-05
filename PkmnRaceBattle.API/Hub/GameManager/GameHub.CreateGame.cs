@@ -44,20 +44,19 @@ namespace PkmnRaceBattle.API.Hub
             PokemonMongo pkmn3 = await _mongoPokemonRepository.GetPokemonMongoById(150);*/
             PokemonMongo pkmn4 = await _mongoPokemonRepository.GetPokemonMongoById(130);
 
-            PokemonTeam pokemonTeam = GenerateNewPokemon.GenerateNewPokemonTeam(starterInfos, 50, 50);
+            PokemonTeam pokemonTeam = GenerateNewPokemon.GenerateNewPokemonTeam(starterInfos, 5, 6);
             /*  PokemonTeam pkmnTeam = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn, 15, 15);
                 PokemonTeam pkmn1Team = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn1, 15, 15);
                PokemonTeam pkmn2Team = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn2, 15, 15);
               PokemonTeam pkmn3Team = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn3, 15, 15);*/
-            //PokemonTeam pkmn4Team = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn4, 15, 15); 
+            //PokemonTeam pkmn4Team = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn4, 15, 15);
 
             PlayerMongo playerMongo = new PlayerMongo();
             playerMongo.Name = username;
             playerMongo.RoomId = gameCode;
             playerMongo.Team = [pokemonTeam];
-            //playerMongo.Team = [pokemonTeam, pkmn1Team, pkmnTeam, pkmn2Team]; 
+            //playerMongo.Team = [pokemonTeam, pkmn1Team, pkmnTeam, pkmn2Team];
             playerMongo.IsHost = true;
-            Random rnd = new Random();
             playerMongo.Sprite = trainerSprite;
             PlayerPathHelper.InitPlayerPath(playerMongo);
 

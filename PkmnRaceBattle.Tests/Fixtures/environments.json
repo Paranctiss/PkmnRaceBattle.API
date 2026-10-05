@@ -1,0 +1,790 @@
+[
+ {
+  "_id": {
+   "$oid": "697f2d954affb5f6c08a2169"
+  },
+  "Name": "Plaine",
+  "PossiblePokemons": [
+   {
+    "PokemonId": 1,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 2,
+    "MinimumLevel": 16,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 3,
+    "MinimumLevel": 32,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 16,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 17,
+    "MinimumLevel": 18,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 18,
+    "MinimumLevel": 36,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 19,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 20,
+    "MinimumLevel": 20,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 21,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 22,
+    "MinimumLevel": 20,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 23,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 24,
+    "MinimumLevel": 22,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 25,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 26,
+    "MinimumLevel": 20,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 29,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 30,
+    "MinimumLevel": 16,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 31,
+    "MinimumLevel": 50,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 32,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 33,
+    "MinimumLevel": 16,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 34,
+    "MinimumLevel": 50,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 43,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 44,
+    "MinimumLevel": 21,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 45,
+    "MinimumLevel": 45,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 52,
+    "MinimumLevel": 28,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 69,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 70,
+    "MinimumLevel": 21,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 71,
+    "MinimumLevel": 50,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 83,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 84,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 85,
+    "MinimumLevel": 31,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 106,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 107,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 108,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 111,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 112,
+    "MinimumLevel": 42,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 113,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 114,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 115,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 122,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 128,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 132,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 133,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 143,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 151,
+    "MinimumLevel": 1,
+    "Rareté": "Légendaire"
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "697f2d954affb5f6c08a216a"
+  },
+  "Name": "Foret",
+  "PossiblePokemons": [
+   {
+    "PokemonId": 10,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 11,
+    "MinimumLevel": 7,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 12,
+    "MinimumLevel": 10,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 13,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 14,
+    "MinimumLevel": 10,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 15,
+    "MinimumLevel": 10,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 46,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 47,
+    "MinimumLevel": 24,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 48,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 49,
+    "MinimumLevel": 31,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 56,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 57,
+    "MinimumLevel": 28,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 102,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 103,
+    "MinimumLevel": 50,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 123,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 124,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 127,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "697f2d954affb5f6c08a216b"
+  },
+  "Name": "Grotte",
+  "PossiblePokemons": [
+   {
+    "PokemonId": 27,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 28,
+    "MinimumLevel": 22,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 35,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 36,
+    "MinimumLevel": 30,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 41,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 42,
+    "MinimumLevel": 22,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 50,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 51,
+    "MinimumLevel": 26,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 63,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 64,
+    "MinimumLevel": 16,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 65,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 66,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 67,
+    "MinimumLevel": 28,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 68,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 74,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 75,
+    "MinimumLevel": 25,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 76,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 88,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 89,
+    "MinimumLevel": 38,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 92,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 93,
+    "MinimumLevel": 25,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 94,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 95,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 96,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 97,
+    "MinimumLevel": 26,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 104,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 105,
+    "MinimumLevel": 28,
+    "Rareté": "Très rare"
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "697f2d954affb5f6c08a216c"
+  },
+  "Name": "Volcan",
+  "PossiblePokemons": [
+   {
+    "PokemonId": 4,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 5,
+    "MinimumLevel": 16,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 6,
+    "MinimumLevel": 36,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 37,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 38,
+    "MinimumLevel": 40,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 58,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 59,
+    "MinimumLevel": 40,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 77,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 78,
+    "MinimumLevel": 78,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 126,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 136,
+    "MinimumLevel": 30,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 146,
+    "MinimumLevel": 1,
+    "Rareté": "Légendaire"
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "697f2d954affb5f6c08a216d"
+  },
+  "Name": "Centrale",
+  "PossiblePokemons": [
+   {
+    "PokemonId": 25,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 26,
+    "MinimumLevel": 30,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 81,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 82,
+    "MinimumLevel": 30,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 100,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 101,
+    "MinimumLevel": 30,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 125,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 135,
+    "MinimumLevel": 30,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 137,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 145,
+    "MinimumLevel": 1,
+    "Rareté": "Légendaire"
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "697f2d954affb5f6c08a216e"
+  },
+  "Name": "Eau",
+  "PossiblePokemons": [
+   {
+    "PokemonId": 7,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 8,
+    "MinimumLevel": 16,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 9,
+    "MinimumLevel": 36,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 54,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 55,
+    "MinimumLevel": 33,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 60,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 61,
+    "MinimumLevel": 25,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 62,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 72,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 73,
+    "MinimumLevel": 30,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 79,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 80,
+    "MinimumLevel": 37,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 86,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 87,
+    "MinimumLevel": 34,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 90,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 91,
+    "MinimumLevel": 40,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 98,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 99,
+    "MinimumLevel": 28,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 116,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 117,
+    "MinimumLevel": 32,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 118,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 119,
+    "MinimumLevel": 33,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 120,
+    "MinimumLevel": 1,
+    "Rareté": "Peu commun"
+   },
+   {
+    "PokemonId": 121,
+    "MinimumLevel": 30,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 129,
+    "MinimumLevel": 1,
+    "Rareté": "Commun"
+   },
+   {
+    "PokemonId": 130,
+    "MinimumLevel": 20,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 131,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 134,
+    "MinimumLevel": 30,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 138,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 139,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 140,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 141,
+    "MinimumLevel": 40,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 142,
+    "MinimumLevel": 1,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 144,
+    "MinimumLevel": 1,
+    "Rareté": "Légendaire"
+   },
+   {
+    "PokemonId": 147,
+    "MinimumLevel": 1,
+    "Rareté": "Rare"
+   },
+   {
+    "PokemonId": 148,
+    "MinimumLevel": 30,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 149,
+    "MinimumLevel": 55,
+    "Rareté": "Très rare"
+   },
+   {
+    "PokemonId": 150,
+    "MinimumLevel": 1,
+    "Rareté": "Légendaire"
+   }
+  ]
+ }
+]

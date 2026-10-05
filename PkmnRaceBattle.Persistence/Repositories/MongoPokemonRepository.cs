@@ -16,7 +16,7 @@ namespace PkmnRaceBattle.Persistence.Repositories
     {
         IMongoCollection<PokemonMongo> _pokemonCollection;
         IMongoCollection<EnvironmentMongo> _environmentCollection;
-        public MongoPokemonRepository(IMongoDatabase database, string collectionName, string environmentCollectionName) 
+        public MongoPokemonRepository(IMongoDatabase database, string collectionName, string environmentCollectionName)
         {
             _pokemonCollection = database.GetCollection<PokemonMongo>(collectionName);
             _environmentCollection = database.GetCollection<EnvironmentMongo>(environmentCollectionName);
@@ -57,7 +57,7 @@ namespace PkmnRaceBattle.Persistence.Repositories
             { "Légendaire", 1 }
         };
 
-        public async Task<PokemonMongo?> GetRandomByEnvironment(string environment)
+        public async Task<PokemonMongo?> GetRandomByEnvironment(string environment, int level)
         {
             var environmentMongo = await _environmentCollection
                 .Find(x => x.Name == environment)
@@ -66,8 +66,16 @@ namespace PkmnRaceBattle.Persistence.Repositories
             if (environmentMongo == null || environmentMongo.PossiblePokemons == null)
                 return null;
 
+            // Seuls les Pokémon que l'on peut rencontrer à ce niveau (sinon les plus accessibles de la map)
+            var candidates = environmentMongo.PossiblePokemons.Where(p => p.MinimumLevel <= level).ToList();
+            if (candidates.Count == 0)
+            {
+                int lowest = environmentMongo.PossiblePokemons.Min(p => p.MinimumLevel);
+                candidates = environmentMongo.PossiblePokemons.Where(p => p.MinimumLevel == lowest).ToList();
+            }
+
             // Tirage pondéré
-            var spawn = PickRandomPokemon(environmentMongo.PossiblePokemons);
+            var spawn = PickRandomPokemon(candidates);
 
             // Récupération du Pokémon correspondant
             var pokemon = await _pokemonCollection

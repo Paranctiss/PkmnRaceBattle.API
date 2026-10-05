@@ -1,3 +1,4 @@
+using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 
 namespace PkmnRaceBattle.API.Helpers.PathManager
@@ -67,7 +68,6 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
             Domain.Models.PlayerMongo.Path path = new Domain.Models.PlayerMongo.Path();
             path.PathPoints = new List<PathPoint>();
 
-            Random random = new Random();
 
             bool hasChoice = false; // Alterne : choix / pas choix
             int environmentCounter = 0; // Compte uniquement les environnements (pas Shop/Centre)
@@ -89,7 +89,7 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
                     {
                         X = step,
                         Y = 1,
-                        EnvironmentName = ServiceEnvironments[random.Next(ServiceEnvironments.Length)]
+                        EnvironmentName = ServiceEnvironments[GameRandom.Next(RandomPurpose.Generation, ServiceEnvironments.Length)]
                     });
                     hasChoice = false;
                     environmentCounter = 0; // Reset le compteur après Shop/Centre
@@ -100,12 +100,12 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
                     if (hasChoice)
                     {
                         // Le joueur a 2 choix : créer (X,1) ET (X,2)
-                        string env1 = FightEnvironments[random.Next(FightEnvironments.Length)];
+                        string env1 = FightEnvironments[GameRandom.Next(RandomPurpose.Generation, FightEnvironments.Length)];
                         string env2;
 
                         do
                         {
-                            env2 = FightEnvironments[random.Next(FightEnvironments.Length)];
+                            env2 = FightEnvironments[GameRandom.Next(RandomPurpose.Generation, FightEnvironments.Length)];
                         } while (env2 == env1);
 
                         path.PathPoints.Add(new PathPoint { X = step, Y = 1, EnvironmentName = env1 });
@@ -120,7 +120,7 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
                         {
                             X = step,
                             Y = 1,
-                            EnvironmentName = FightEnvironments[random.Next(FightEnvironments.Length)]
+                            EnvironmentName = FightEnvironments[GameRandom.Next(RandomPurpose.Generation, FightEnvironments.Length)]
                         });
 
                         hasChoice = true;

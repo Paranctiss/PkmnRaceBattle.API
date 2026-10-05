@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.API.Hub;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using System.Linq;
@@ -7,27 +8,29 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 {
     public static class FightDamageMove
     {
-        private static readonly Random Random = new Random();
 
 
 
-        public static PokemonTeam[] PerformDamageMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, string fieldChange, TurnContext turnContext) 
+        public static PokemonTeam[] PerformDamageMove(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, string fieldChange, TurnContext turnContext)
         {
             int damages;
             if (move.BrutDamages != null)
             {
-                damages = (int)move.BrutDamages;
+                // Dégâts fixes : seule l'immunité de type compte
+                damages = CalculateTypeEffectiveness(move.Type, defenser.Types, new TurnContext()) == 0.0 ? 0 : (int)move.BrutDamages;
+                if (damages == 0) turnContext.AddMessage("Cela n'a aucun effet");
                 attacker.BlowsTaken = 0;
             }
             else
             {
-                damages = CalculateDamage(attacker, defenser, move, turnContext);
-                if (fieldChange == "Mur Lumière" && move.DamageType == "special") damages = damages / 2;
-                if (fieldChange == "Protection" && move.DamageType == "physical") damages = damages / 2;
+                damages = CalculateDamage(attacker, defenser, move, turnContext, out bool critical);
+                // Un coup critique ignore Protection / Mur Lumière
+                if (!critical && fieldChange == "Mur Lumière" && move.DamageType == "special") damages = damages / 2;
+                if (!critical && fieldChange == "Protection" && move.DamageType == "physical") damages = damages / 2;
             }
 
             damages = SpecialCaseDamages(damages, move, attacker, defenser, turnContext);
-            
+
             if (attacker.CurrHp > attacker.BaseHp) attacker.CurrHp = attacker.BaseHp;
 
             int oldDefHp = defenser.CurrHp;
@@ -63,24 +66,35 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             }
         }
 
-        private static int CalculateDamage(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
+        private static int CalculateDamage(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext, out bool critical)
         {
             int baseAttackStat = move.DamageType == "special" ? attacker.AtkSpe : attacker.Atk;
             int baseDefenseStat = move.DamageType == "special" ? defenser.DefSpe : defenser.Def;
 
-            if (attacker.IsBurning) baseAttackStat = baseAttackStat / 2;
+            // La brûlure ne divise que les attaques physiques
+            if (attacker.IsBurning && move.DamageType == "physical") baseAttackStat = baseAttackStat / 2;
 
-            double attackMultiplier = GetStatMultiplier(move.DamageType == "special" ? attacker.AtkSpeChanges : attacker.AtkChanges);
-            double defenseMultiplier = GetStatMultiplier(move.DamageType == "special" ? defenser.DefSpeChanges : defenser.DefChanges);
+            critical = move.NameFr != "Confusion" && IsCriticalHit(attacker, move);
+            int attackStage = move.DamageType == "special" ? attacker.AtkSpeChanges : attacker.AtkChanges;
+            int defenseStage = move.DamageType == "special" ? defenser.DefSpeChanges : defenser.DefChanges;
+            if (critical)
+            {
+                // Un coup critique ignore les baisses d'attaque du lanceur et les hausses de défense de la cible
+                attackStage = Math.Max(0, attackStage);
+                defenseStage = Math.Min(0, defenseStage);
+            }
+
+            double attackMultiplier = GetStatMultiplier(attackStage);
+            double defenseMultiplier = GetStatMultiplier(defenseStage);
 
             int attackStat = (int)(baseAttackStat * attackMultiplier);
             int defenseStat = (int)(baseDefenseStat * defenseMultiplier);
 
             if (move.Power == null) move.Power = 0;
             double baseDamage = (double)(((2 * attacker.Level / 5.0 + 2) * move.Power * (attackStat / (double)defenseStat)) / 50 + 2);
-            
 
-            double modifier = CalculateModifier(attacker, defenser, move, turnContext);
+
+            double modifier = CalculateModifier(attacker, defenser, move, turnContext, critical);
             if (IsSpecialCasesModifier(move) && modifier != 0.0) modifier = 1.0;
             int damage = (int)(baseDamage * modifier);
 
@@ -94,12 +108,12 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return false;
         }
 
-        private static double CalculateModifier(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
+        private static double CalculateModifier(PokemonTeam attacker, PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext, bool isCritical)
         {
             double stab = 1.0;
             foreach(TypeMongo type in attacker.Types)
             {
-                if (type.Name == move.Type) stab = 1.5; 
+                if (type.Name == move.Type) stab = 1.5;
             }
 
 
@@ -107,13 +121,13 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             double typeEffectiveness = CalculateTypeEffectiveness(move.Type, defenser.Types, turnContext);
             if (typeEffectiveness == 0.0) attacker = FightPerformMove.SpecialCaseMissMove(attacker, move, turnContext);
             double critical = 1.0;
-            if (move.NameFr != "Confusion" && IsCriticalHit(attacker, move))
+            if (isCritical)
             {
                 turnContext.AddMessage("Coup critique !");
                 critical = 1.5;
             }
 
-            double randomFactor = Random.Next(85, 101) / 100.0;
+            double randomFactor = GameRandom.Next(RandomPurpose.DamageRoll, 85, 101) / 100.0;
 
             double otherModifiers = 1.0; //Prendre en compte plus tard les changements météos/talents/etc...
 
@@ -136,8 +150,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             double finalCritRate = baseCritRate * critMultiplier;
 
             // Générer une valeur aléatoire entre 0 et 1
-            Random random = new Random();
-            double randomValue = random.NextDouble();
+            double randomValue = GameRandom.NextDouble(RandomPurpose.Critical);
 
             // Vérifier si un critique se produit
             return randomValue < finalCritRate;
@@ -285,9 +298,9 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     break;
 
                 case "ground":
-                    string[] groundStrongness = ["steel", "electric", "feu", "poison", "rock"];
+                    string[] groundStrongness = ["steel", "electric", "fire", "poison", "rock"];
                     string[] groundWeakness = ["bug", "grass"];
-                    string[] groundNotEffective = ["fly"];
+                    string[] groundNotEffective = ["flying"];
                     foreach (TypeMongo type in defenderTypes)
                     {
                         if (groundStrongness.Contains(type.Name)) strongScore++;
@@ -317,7 +330,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     break;
 
                 case "poison":
-                    string[] poisonStrongness = ["fiary", "grass"];
+                    string[] poisonStrongness = ["fairy", "grass"];
                     string[] poisonWeakness = ["poison", "rock", "ground", "ghost"];
                     string[] poisonNotEffectiver = ["steel"];
                     foreach (TypeMongo type in defenderTypes)
@@ -380,7 +393,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return 1.0;
 
         }
-    
+
         public static bool NeedStackDamages(PokemonTeam defenser)
         {
             if(defenser.WaitingMove != null)

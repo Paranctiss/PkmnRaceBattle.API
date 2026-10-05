@@ -1,4 +1,5 @@
 ﻿using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -14,6 +15,24 @@ namespace PkmnRaceBattle.API.Hub
 {
     public partial class GameHub
     {
+        // Nouvelle espèce : garde l'identifiant, les capacités, l'XP, les dégâts subis, le shiny et les statuts
+        private static PokemonTeam Evolve(PokemonTeam pokemon, PokemonMongo evolutionBase)
+        {
+            PokemonTeam evolved = PokemonBaseToTeam.ConvertBaseToTeam(evolutionBase, pokemon.Level, pokemon.IsShiny);
+            evolved.Id = pokemon.Id;
+            evolved.Moves = pokemon.Moves;
+            evolved.CurrHp = pokemon.CurrHp <= 0 ? 0 : pokemon.CurrHp + (evolved.BaseHp - pokemon.BaseHp);
+            evolved.CurrXP = pokemon.CurrXP;
+            evolved.HavePlayed = pokemon.HavePlayed;
+            evolved.IsBurning = pokemon.IsBurning;
+            evolved.IsFrozen = pokemon.IsFrozen;
+            evolved.IsParalyzed = pokemon.IsParalyzed;
+            evolved.IsPoisoned = pokemon.IsPoisoned;
+            evolved.PoisonCount = pokemon.PoisonCount;
+            evolved.IsSleeping = pokemon.IsSleeping;
+            return evolved;
+        }
+
         public async Task<PokemonTeam> CheckLevelUp(PokemonTeam team)
         {
             List<MoveMongo> movesToLearn = new List<MoveMongo>();
@@ -21,7 +40,7 @@ namespace PkmnRaceBattle.API.Hub
             string learnedMove = "";
             int oldLevel = team.Level;
             string oldPkmnName = "";
-            while (PokemonExperienceCalculator.ExpToNextLevel(team) <= 0)
+            while (team.Level < 100 && PokemonExperienceCalculator.ExpToNextLevel(team) <= 0)
             {
                 team.Level++;
 
@@ -29,18 +48,19 @@ namespace PkmnRaceBattle.API.Hub
 
                 var possibleEvolutions = team.EvolutionDetails?.Where(evo => evo.MinLevel != null && evo.MinLevel <= team.Level).ToList();
 
-                if (possibleEvolutions != null && possibleEvolutions.Count > 0)
+                // Évolution vers un Pokémon absent de la base (hors Gen 1) : ignorée
+                PokemonMongo? evolutionBase = null;
+                foreach (var evolution in possibleEvolutions ?? [])
                 {
-                    //A voir plus tard si différentes évolutions peuvent avoir lieu au même niveau 
-                    var evolutionToUse = possibleEvolutions[0];
+                    evolutionBase = await _mongoPokemonRepository.GetPokemonMongoByOGName(evolution.PokemonName);
+                    if (evolutionBase != null) break;
+                }
 
-                    pokemonBase = await _mongoPokemonRepository.GetPokemonMongoByOGName(evolutionToUse.PokemonName);
-                    PokemonTeam EvolvedPokemon = PokemonBaseToTeam.ConvertBaseToTeam(pokemonBase, team.Level, team.IsShiny);
-                    EvolvedPokemon.Moves = team.Moves;
-                    EvolvedPokemon.CurrHp = team.CurrHp + (EvolvedPokemon.BaseHp - team.BaseHp);
-                    EvolvedPokemon.CurrXP = team.CurrXP;
+                if (evolutionBase != null)
+                {
+                    pokemonBase = evolutionBase;
                     oldPkmnName = team.NameFr;
-                    team = EvolvedPokemon;
+                    team = Evolve(team, pokemonBase);
                     evolvedThisTurn = true;
                 }
                 else
@@ -88,7 +108,7 @@ namespace PkmnRaceBattle.API.Hub
                 int delay = 500;
                 if (evolvedThisTurn) delay += 500;
                 if (learnedMove != "") delay += 500;
-                await Task.Delay(delay);
+                await GameDelay.Wait(delay);
             }
 
             return team;

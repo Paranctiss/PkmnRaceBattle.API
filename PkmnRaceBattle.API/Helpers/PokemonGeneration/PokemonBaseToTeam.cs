@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.API.Helpers.MoveManager;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Helpers.MoveManager;
 using PkmnRaceBattle.API.Helpers.StatsCalculator;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -14,8 +15,7 @@ namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
     {
         public static PokemonTeam ConvertBaseToTeam(PokemonMongo pokemonBase, int level, bool setShiny = false)
         {
-            Random rnd = new Random();
-            int result = rnd.Next(512);
+            int result = GameRandom.Next(RandomPurpose.Generation, 512);
 
             if (level <= 0) { level = 1; }
 

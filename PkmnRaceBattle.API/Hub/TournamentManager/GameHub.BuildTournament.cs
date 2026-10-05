@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.API.Helper;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Helper;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -18,8 +19,7 @@ namespace PkmnRaceBattle.API.Hub
             List<PlayerMongo> playersInRoom = await _mongoPlayerRepository.GetByRoomId(gameCode);
 
             //Réarangement aléatoire pour l'arbre
-            Random random = new Random();
-            playersInRoom = playersInRoom.OrderBy(x => random.Next()).ToList();
+            playersInRoom = playersInRoom.OrderBy(x => GameRandom.Next(RandomPurpose.Generation, 0, int.MaxValue)).ToList();
 
             PokemonMongo starterInfos = await _mongoPokemonRepository.GetPokemonMongoById(1);
             PokemonTeam pokemonTeam = GenerateNewPokemon.GenerateNewPokemonTeam(starterInfos, 5, 5);

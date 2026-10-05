@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.API.Helper;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Helper;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -18,7 +19,9 @@ namespace PkmnRaceBattle.API.Hub
             int levelAvg = player.GetAverageLevel();
 
 
-            PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandomByEnvironment(player.CurrentPath.EnvironmentName);
+            // Niveau entre (moyenne de l'équipe - 3) et (moyenne - 2), au moins 1
+            int wildLevel = Math.Max(1, GameRandom.Next(RandomPurpose.Generation, levelAvg - 3, levelAvg - 1));
+            PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandomByEnvironment(player.CurrentPath.EnvironmentName, wildLevel);
             //PokemonMongo rndPokemon = await _mongoPokemonRepository.GetPokemonMongoById(122);
 
             //PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg - 3, levelAvg - 2);
@@ -26,7 +29,7 @@ namespace PkmnRaceBattle.API.Hub
             {
 
             }
-            PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, 1, 2);
+            PokemonTeam wildPokemon = PokemonBaseToTeam.ConvertBaseToTeam(rndPokemon, wildLevel);
             PlayerMongo wildOpponent = new PlayerMongo();
             wildOpponent.GenerateWild();
             wildOpponent.Team = [wildPokemon];

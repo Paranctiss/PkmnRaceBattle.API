@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.Domain.Models.PlayerMongo;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using System;
 
 namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
@@ -25,7 +26,6 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             double catchProbability = Math.Pow(a / 255, 0.75);
 
             // 3. Effectuer la tentative de capture
-            Random random = new Random();
 
             // 4. Calculer le nombre de secousses si pas de capture immédiate
             int shakeCount = 0;
@@ -35,7 +35,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             {
                 // Chaque secousse a la même probabilité
                 double shakeCheck = Math.Pow(a / 255, 0.1875);
-                if (random.NextDouble() <= shakeCheck)
+                if (GameRandom.NextDouble(RandomPurpose.Catch) <= shakeCheck)
                 {
                     shakeCount++;
                     if (shakeCount == 4)

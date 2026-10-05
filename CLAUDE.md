@@ -11,9 +11,25 @@ ASP.NET Core 8 server of PkmnRaceBattle (SignalR + MongoDB). The client lives in
 ```bash
 dotnet build PkmnRaceBattle.API.sln
 dotnet run --project PkmnRaceBattle.API
+dotnet test PkmnRaceBattle.Tests                                   # ~1170 tests, ~25 s, no MongoDB needed
+dotnet test PkmnRaceBattle.Tests --artifacts-path %TEMP%/pkmn-tests  # when the API runs in the IDE and locks bin/
+dotnet test PkmnRaceBattle.Tests --filter "FullyQualifiedName~Moves.MultiTurnMovesTests"
 ```
 
-`Program.cs` forces `UseUrls("http://0.0.0.0:5000", "https://0.0.0.0:5001")`, overriding `launchSettings.json` ports. There is no test project. `publish/` is a committed deployment output, not source.
+`Program.cs` forces `UseUrls("http://0.0.0.0:5000", "https://0.0.0.0:5001")`, overriding `launchSettings.json` ports. `publish/` is a committed deployment output, not source. Mongo settings can be overridden with environment variables (`MongoSettings__ConnectionString`, `MongoSettings__DatabaseName`) — the client's E2E tests use this to point the API at the local `PkmnRaceBattle_Test` database.
+
+## Tests
+
+`PkmnRaceBattle.Tests` (xUnit + Moq) — read `PkmnRaceBattle.Tests/README.md` before adding tests. Expected game rules are in `docs/MECANIQUES_COMBAT.md`: a deliberate **mix of Gen 1 and modern mechanics** chosen by the owner (modern type chart, 1/8 burn/poison, 20 % thaw, ×1.5 crits, etc.). Tests follow that mix and only fail on real bugs (10 known gaps listed in the tests README); fix the game code (after asking the owner), not the test. When the code differs from a given generation, decide whether it is a deliberate modern rule or a bug, and ask when unsure.
+- `Mechanics/` and `Moves/SingleTurnSpecialMovesTests` call the static helpers directly; `Hub/` and `Moves/MultiTurnMovesTests` drive `GameHub` through `Support/HubHarness` (in-memory repositories with BSON round-trip, recorded `SendAsync` calls) and `Support/Battle`.
+- Real game data in `PkmnRaceBattle.Tests/Fixtures/*.json` (exported from MongoDB, + trade evolutions at level 37).
+- Tests run sequentially: `UserConnectionManager` uses static non-thread-safe dictionaries (also a production concurrency risk).
+- `Contract/` tests read the sibling client repo to check SignalR names/arguments and shop prices.
+
+### Testability rules for game code
+- Randomness: always `GameRandom.Next(RandomPurpose.X, min, max)` / `GameRandom.NextDouble(RandomPurpose.X)` (`Helpers/Randomness/GameRandom.cs`), never `new Random()`. Tests drive each purpose separately with `TestRandom`.
+- Animation pauses: `await GameDelay.Wait(ms)`, never `Task.Delay` (tests set it to zero).
+- Metronome: `MetronomeMoveProvider.GetMoveAsync()` (pokeapi in production, overridable in tests).
 
 ## Architecture
 
@@ -36,9 +52,11 @@ Public hub method names and `SendAsync` event names are the contract with the cl
 ### Battle logic
 Rules live in stateless helpers under `PkmnRaceBattle.API/Helpers/`: `MoveManager/Fights/*` (damage, status, ailments, priority, catch, items, AI move choice, experience), `StatsCalculator/`, `PokemonGeneration/`, `TrainerGeneration/`, `PathManager/` (map path).
 
-A `TurnContext` accumulates messages and HP/stat changes during a turn and is sent to the client as `useMoveResult`; its `CalculateDelay()` drives client animation timing.
+A `TurnContext` accumulates messages and HP/stat changes during a turn and is sent to the client as `useMoveResult`; its `CalculateDelay()` drives client animation timing. Every HP change applied to a Pokémon must also be added to `TurnContext.Player/Opponent.Hp` (positive = damage, negative = heal), otherwise the client HP bar is wrong until `turnFinished`.
 
-Fight flow: `HandleMove` loads player + opponent from Mongo (wild/trainer opponents come from the `WildPokemon` collection, PvP opponents from `Player`), validates via `ValidatorMove`, then resolves both moves. Special pseudo-moves are encoded in the move name string: `item:<name>` and `swap:<index>` (converted by `PokemonMoveSelector.ConvertToActionMove`). In PvP, the first player's choice is persisted as `ChosenMove` and the caller gets `waitingOpponent` until the other player submits.
+Detailed turn flow, per-Pokémon battle state fields, what is reset on switch / end of fight, formulas and the expected behaviour of every special move: `docs/MECANIQUES_COMBAT.md`.
+
+Fight flow: `HandleMove` loads player + opponent from Mongo (wild/trainer opponents come from the `WildPokemon` collection, PvP opponents from `Player`), validates via `ValidatorMove`, then resolves both moves. Special pseudo-moves are encoded in the move name string: `item:<name>:<pocket>` (target team slot in the `index` argument) and `swap:` (sent by `ReplacePokemon` after it reorders the team), converted by `PokemonMoveSelector.ConvertToActionMove`. In PvP, the first player's choice is persisted as `ChosenMove` and the caller gets `waitingOpponent` until the other player submits.
 
 All game state is persisted in MongoDB after each action — the hub holds no in-memory game state (except the timer). Reload entities from repositories rather than caching them.
 

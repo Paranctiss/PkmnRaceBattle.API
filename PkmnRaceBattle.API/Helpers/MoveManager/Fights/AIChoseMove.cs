@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.Domain.Models.PlayerMongo;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.Domain.Models.PlayerMongo;
 
 namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 {
@@ -6,11 +7,12 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
     {
         public static PokemonTeamMove GetARandomMove(PokemonTeam pokemon)
         {
-            Random rand = new Random();
             PokemonTeamMove[] moves = pokemon.Moves
-            .Where(x => !pokemon.CantUseMoves.Contains(x.NameFr))
+            .Where(x => !pokemon.CantUseMoves.Contains(x.NameFr) && x.Pp > 0)
             .ToArray();
-            return moves[rand.Next(moves.Length)];
+            // Plus de capacité utilisable : l'appelant utilise Lutte
+            if (moves.Length == 0) return null!;
+            return moves[GameRandom.Next(RandomPurpose.AiMoveChoice, moves.Length)];
         }
 
         public static PokemonTeamMove GetThatMove(PokemonTeam pokemon, string moveName)
