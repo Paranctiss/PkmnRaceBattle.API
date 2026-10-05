@@ -221,7 +221,7 @@ namespace PkmnRaceBattle.Persistence.ExternalAPI
         {
             EnvironmentMongo environmentForet = new EnvironmentMongo()
             {
-                Name = "Forêt",
+                Name = "Foret",
             };
 
             List<PokemonSpawn> foretSpawns = new List<PokemonSpawn>();
@@ -298,17 +298,17 @@ namespace PkmnRaceBattle.Persistence.ExternalAPI
 
             List<PokemonSpawn> volcanSpawns = new List<PokemonSpawn>();
 
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 4, MinimumLevel = 1, Rareté = "Rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 5, MinimumLevel = 16, Rareté = "Très rare" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 4, MinimumLevel = 1, Rareté = "Peu commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 5, MinimumLevel = 16, Rareté = "Rare" });
             volcanSpawns.Add(new PokemonSpawn() { PokemonId = 6, MinimumLevel = 36, Rareté = "Très rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 37, MinimumLevel = 1, Rareté = "Peu commun" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 38, MinimumLevel = 40, Rareté = "Très rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 58, MinimumLevel = 1, Rareté = "Rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 59, MinimumLevel = 40, Rareté = "Très rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 77, MinimumLevel = 1, Rareté = "Peu commun" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 78, MinimumLevel = 78, Rareté = "Rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 126, MinimumLevel = 1, Rareté = "Très rare" });
-            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 136, MinimumLevel = 30, Rareté = "Très rare" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 37, MinimumLevel = 1, Rareté = "Commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 38, MinimumLevel = 40, Rareté = "Peu commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 58, MinimumLevel = 1, Rareté = "Commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 59, MinimumLevel = 40, Rareté = "Peu commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 77, MinimumLevel = 1, Rareté = "Commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 78, MinimumLevel = 78, Rareté = "Peu commun" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 126, MinimumLevel = 1, Rareté = "Rare" });
+            volcanSpawns.Add(new PokemonSpawn() { PokemonId = 136, MinimumLevel = 30, Rareté = "Rare" });
             volcanSpawns.Add(new PokemonSpawn() { PokemonId = 146, MinimumLevel = 1, Rareté = "Légendaire" });
 
             environmentVolcan.PossiblePokemons = volcanSpawns;

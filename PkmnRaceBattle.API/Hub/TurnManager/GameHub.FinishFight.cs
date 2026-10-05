@@ -94,6 +94,7 @@ namespace PkmnRaceBattle.API.Hub
                         team = await CheckLevelUp(team);
                     }
                     player.Team[i] = team;
+
                 }
                 if (!unexpectedEnd)
                 {
@@ -192,27 +193,25 @@ namespace PkmnRaceBattle.API.Hub
                 await Task.Delay(3000);
             }
 
+            // Un dresseur PvE à qui il reste des Pokémon continue le combat
+            bool trainerContinues = !opponent.IsPlayer && opponent.IsTrainer && !lost
+                && opponent.Team.Any(x => x.CurrHp > 0);
+
+            // Combat PvE terminé (victoire, défaite, capture ou fuite) : il compte dans la progression de la map
+            if (!opponent.IsPlayer && !trainerContinues) player.MapFightCount++;
+
             await this._mongoPlayerRepository.UpdateAsync(player);
 
             if (!opponent.IsPlayer) await this._mongoWildPokemonRepository.UpdateAsync(opponent);
             else await this._mongoPlayerRepository.UpdateAsync(opponent);
 
-            if (!opponent.IsPlayer && opponent.IsTrainer && opponent.Team.FirstOrDefault(x => x.CurrHp > 0) != null && !lost)
-            {
+            // Le PvP est piloté par le tournoi, pas par le chemin
+            if (opponent.IsPlayer) return;
 
+            if (trainerContinues)
                 await TrainerSendNextPokemon(player, opponent);
-            }
             else
-            {
-                if (opponent.IsPlayer)
-                {
-
-                }
-                else
-                {
-                    await GetNewTurn(player._id);
-                }
-            }
+                await GetNewTurn(player._id);
         }
     }
 }

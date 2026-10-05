@@ -1,11 +1,5 @@
-﻿using PkmnRaceBattle.API.Helper;
-using PkmnRaceBattle.API.Helpers.PokemonGeneration;
+using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
-using PkmnRaceBattle.Domain.Models.PokemonMongo;
-using System.Text.RegularExpressions;
-using Microsoft.AspNet.SignalR.Messaging;
-using Microsoft.AspNet.SignalR.Tracing;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.SignalR;
 
 namespace PkmnRaceBattle.API.Hub
@@ -14,44 +8,71 @@ namespace PkmnRaceBattle.API.Hub
     {
         public async Task GetNewTurn(string userId)
         {
-            string[] turnTypes = ["WildFight", "TrainerFight", "PokeCenter", "PokeShop"];
-            Random rnd = new Random();
-            string turnType = turnTypes[turnTypes.Length - 1];
+            PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
 
-            int random = rnd.Next(1, 101);
-
-            if (random > 30)
+            if (PlayerPathHelper.IsCurrentMapCompleted(player))
             {
-                turnType = "WildFight";
+                List<PathPoint> nextPoints = PlayerPathHelper.GetNextPathPoints(player);
+
+                if (nextPoints.Count > 1)
+                {
+                    // Embranchement : le joueur doit choisir la prochaine map avant de lancer le tour
+                    await Clients.Caller.SendAsync("chooseNextPath", nextPoints);
+                    return;
+                }
+
+                if (nextPoints.Count == 1)
+                {
+                    PlayerPathHelper.MoveTo(player, nextPoints[0]);
+                }
+                else
+                {
+                    // Fin du chemin : le joueur recommence un cycle de combats sur sa map actuelle
+                    player.MapFightCount = 0;
+                }
+
+                await _mongoPlayerRepository.UpdateAsync(player);
             }
-            if (random > 20 && random <= 30)
+
+            await LaunchTurnOnCurrentPath(player);
+        }
+
+        public async Task ChooseNextPath(string userId, int x, int y)
+        {
+            PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
+
+            PathPoint? chosenPoint = PlayerPathHelper.IsCurrentMapCompleted(player)
+                ? PlayerPathHelper.GetNextPathPoints(player).FirstOrDefault(p => p.X == x && p.Y == y)
+                : null;
+
+            // Choix invalide (map hors de l'étape suivante, map courante pas terminée) : on renvoie l'état attendu
+            if (chosenPoint == null)
             {
-                turnType = "PokeShop";
-            }
-            if (random > 10 && random <= 20)
-            {
-                turnType = "PokeCenter";
-            }
-            if (random <= 10)
-            {
-                turnType = "TrainerFight";
+                await GetNewTurn(userId);
+                return;
             }
 
+            PlayerPathHelper.MoveTo(player, chosenPoint);
+            await _mongoPlayerRepository.UpdateAsync(player);
 
-            switch (turnType)
+            await LaunchTurnOnCurrentPath(player);
+        }
+
+        private async Task LaunchTurnOnCurrentPath(PlayerMongo player)
+        {
+            switch (player.CurrentPath.EnvironmentName)
             {
-
-                case "WildFight":
-                    await GetWildFight(userId);
+                case PlayerPathHelper.ShopEnvironment:
+                    await GetPokeShop(player._id);
                     break;
-                case "TrainerFight":
-                    await GetTrainerFight(userId);
+                case PlayerPathHelper.CenterEnvironment:
+                    await GetPokeCenter(player._id);
                     break;
-                case "PokeCenter":
-                    await GetPokeCenter(userId);
-                    break;
-                case "PokeShop":
-                    await GetPokeShop(userId);
+                default:
+                    if (PlayerPathHelper.IsTrainerFightNext(player))
+                        await GetTrainerFight(player._id);
+                    else
+                        await GetWildFight(player._id);
                     break;
             }
         }

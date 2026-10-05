@@ -16,15 +16,22 @@ namespace PkmnRaceBattle.API.Hub
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
             int levelAvg = player.GetAverageLevel();
-            PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandom();
+
+
+            PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandomByEnvironment(player.CurrentPath.EnvironmentName);
             //PokemonMongo rndPokemon = await _mongoPokemonRepository.GetPokemonMongoById(122);
 
-            PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg - 3, levelAvg - 2);
+            //PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg - 3, levelAvg - 2);
+            if(rndPokemon is null)
+            {
+
+            }
+            PokemonTeam wildPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, 1, 2);
             PlayerMongo wildOpponent = new PlayerMongo();
             wildOpponent.GenerateWild();
             wildOpponent.Team = [wildPokemon];
             await _mongoWildPokemonRepository.CreateAsync(wildOpponent);
-            await Clients.Caller.SendAsync("responseWildFight", wildOpponent);
+            await Clients.Caller.SendAsync("responseWildFight", wildOpponent, player);
         }
     }
 }
