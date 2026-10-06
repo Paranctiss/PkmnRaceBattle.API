@@ -20,11 +20,11 @@ dotnet test PkmnRaceBattle.Tests --filter "FullyQualifiedName~Moves.MultiTurnMov
 
 ## Tests
 
-`PkmnRaceBattle.Tests` (xUnit + Moq) — read `PkmnRaceBattle.Tests/README.md` before adding tests. Expected game rules are in `docs/MECANIQUES_COMBAT.md`: a deliberate **mix of Gen 1 and modern mechanics** chosen by the owner (modern type chart, 1/8 burn/poison, 20 % thaw, ×1.5 crits, etc.). Tests follow that mix and only fail on real bugs (10 known gaps listed in the tests README); fix the game code (after asking the owner), not the test. When the code differs from a given generation, decide whether it is a deliberate modern rule or a bug, and ask when unsure.
+`PkmnRaceBattle.Tests` (xUnit + Moq) — read `PkmnRaceBattle.Tests/README.md` before adding tests. Expected game rules are in `docs/MECANIQUES_COMBAT.md`: a deliberate **mix of Gen 1 and modern mechanics** chosen by the owner (modern type chart, 1/8 burn/poison, 20 % thaw, ×1.5 crits, etc.). Tests follow that mix and only fail on real bugs (1 known gap listed in the tests README: Patience, rule to decide); fix the game code (after asking the owner), not the test. When the code differs from a given generation, decide whether it is a deliberate modern rule or a bug, and ask when unsure.
 - `Mechanics/` and `Moves/SingleTurnSpecialMovesTests` call the static helpers directly; `Hub/` and `Moves/MultiTurnMovesTests` drive `GameHub` through `Support/HubHarness` (in-memory repositories with BSON round-trip, recorded `SendAsync` calls) and `Support/Battle`.
 - Real game data in `PkmnRaceBattle.Tests/Fixtures/*.json` (exported from MongoDB, + trade evolutions at level 37).
 - Tests run sequentially: `UserConnectionManager` uses static non-thread-safe dictionaries (also a production concurrency risk).
-- `Contract/` tests read the sibling client repo to check SignalR names/arguments and shop prices.
+- `Contract/` tests read the sibling client repo (folder `PokemonRaceBattle` locally, `PkmnRaceBattle` in a fresh clone) to check SignalR names/arguments and shop prices.
 
 ### Testability rules for game code
 - Randomness: always `GameRandom.Next(RandomPurpose.X, min, max)` / `GameRandom.NextDouble(RandomPurpose.X)` (`Helpers/Randomness/GameRandom.cs`), never `new Random()`. Tests drive each purpose separately with `TestRandom`.
