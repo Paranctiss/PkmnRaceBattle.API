@@ -36,21 +36,13 @@ Aucun test n'utilise MongoDB ni le réseau : dépôts en mémoire, aléatoire pi
 - **`Battle`** : combat joueur contre sauvage/dresseur piloté par le hub (`Battle.VsWild(moi, sauvage, banc…)`, `Use("Charge")`, `UseItem("Potion", "potion", index)`, `SwitchTo(i)`, `Mine`, `Foe`, `HpShownForPlayer/Opponent` = somme des variations de PV envoyées au client). Donner `Trempette` comme seule capacité à l'adversaire pour qu'il ne fasse rien.
 - `TestSetup` met `GameDelay` à zéro pour tout l'assembly.
 
-## Écarts restants (état au 06/10/2026 : 1166 tests, 10 échecs)
+## Écarts restants (état au 06/10/2026 : 1168 tests, 1 échec)
 
-Les tests suivent les règles du jeu (mix Gen 1 / moderne). Une première série de corrections a été faite le 06/10/2026 (précision, types, critiques, statuts et immunités, drains/reculs, dégâts fixes, Balayage, Vampigraine, PP + Lutte, XP et niveau 100, évolutions, remises à zéro, objets, barre de vie, jonction de partie, niveaux des starters/sauvages, `MinimumLevel`). Restent à corriger :
+Les tests suivent les règles du jeu (mix Gen 1 / moderne). Deux séries de corrections ont été faites le 06/10/2026 (précision, types, critiques, statuts et immunités, drains/reculs, dégâts fixes, Balayage, Vampigraine, PP + Lutte, XP et niveau 100, évolutions, remises à zéro, objets, barre de vie, jonction de partie, niveaux des starters/sauvages, `MinimumLevel` ; puis Clonage, K.O. en PvP, tournoi, code mort du client). Reste :
 
 | Test(s) en échec | Problème |
 |---|---|
-| `Clonage_UnCloneDetruitLaissePlaceAuPokemon` | Quand le clone est détruit, `UseMove` restaure la copie du Pokémon prise avant le coût du Clonage : le ¼ de PV payé est rendu |
-| `BarreDeVie_…(move: "Clonage")` | Les dégâts encaissés par le clone sont envoyés comme des dégâts du Pokémon (le client ne connaît pas encore le clone pendant l'animation) |
-| `Patience_RendLeDoubleDesDegatsSubis` | Les dégâts reçus pendant Patience ne sont pas tous cumulés (`BlowsTaken` remis à 0 / incrémenté au mauvais moment) |
-| `PvpTests.KOAvecDesPokemonRestants…` | En PvP, quand le Pokémon de l'adversaire est K.O. et qu'il lui en reste, `FinishFight` ne lui demande pas d'en envoyer un autre (et réinitialise l'équipe du gagnant en plein combat) |
-| `TournamentTests.CombatPvp_LesJoueursSontAppariesDeuxADeux`, `NombreImpairDeJoueurs_NePlantePas` | `GetPvpFight` lit `Rounds[NbTurn - 1]` (le tour suivant, rempli de « ? ») au lieu du tour en cours → crash dès 4 joueurs ; nombre impair non géré |
-| `Tableau_ContientTousLesJoueursEtLeBonNombreDeTours(8)` | `BuildTournament` crée N/2 tours au lieu de log2(N) |
-| `VictoirePvp_LeVainqueurPasseAuTourSuivant` | `AddWinnerToNextRound` n'est jamais appelé après une victoire PvP |
-| `Contract.ChaqueAppelDuClient_UtiliseDesTypesSimples…` | Le client expose `finishFight()` qui appelle `FinishFight` avec des chaînes alors que la méthode attend des objets (code mort côté client) |
-| `Contract.ChaqueEcouteDuClient_CorrespondAUnEvenementDuServeur` | Le client écoute `NewTurn`, jamais envoyé par le serveur (code mort) |
+| `Patience_RendLeDoubleDesDegatsSubis` | Patience a une priorité de +1 dans les données (règle moderne) : au tour où elle se déclenche, le lanceur frappe avant de recevoir le coup de ce tour, que le test (Gen 1) s'attend à voir compté. Règle à trancher par le propriétaire |
 
 Non couvert par un test en échec mais à traiter : `UserConnectionManager` (dictionnaires statiques non thread-safe utilisés par le hub en parallèle) ; côté client, les écouteurs `HubService.on*` ne sont jamais retirés (voir `PokemonRaceBattle/CLAUDE.md`).
 

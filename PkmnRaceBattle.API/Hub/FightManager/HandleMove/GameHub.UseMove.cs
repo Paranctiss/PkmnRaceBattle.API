@@ -36,6 +36,10 @@ namespace PkmnRaceBattle.API.Hub
 
             playerPokemonMongo.HavePlayed = true;
             bool playerDeathNotified = false;
+            // Clone créé pendant ce tour : le client ne le connaît qu'à turnFinished, ses dégâts ne doivent pas
+            // être affichés sur la barre de vie du Pokémon
+            bool playerCloneIsNew = false;
+            bool opponentCloneIsNew = false;
 
             // Chaque capacité utilisée consomme 1 PP (pas le deuxième tour d'une attaque en deux tours, ni Lutte)
             ConsumePp(playerPokemonMongo, usedMove);
@@ -187,6 +191,7 @@ namespace PkmnRaceBattle.API.Hub
                             {
                                 playerPokemonMongo = (PokemonTeam)playerPokemon.Clone();
                                 playerPokemon = (PokemonTeam)playerPokemonMongo.Substitute.Clone();
+                                playerCloneIsNew = true;
                             }
 
                             if (await ManageSpecialCasesAfterMove(opponentMongo, opponentPokemon, playerPokemon, player, turnContext))
@@ -281,12 +286,14 @@ namespace PkmnRaceBattle.API.Hub
                                 {
 
                                     if (FightPerformMove.IsFieldChangeMove(opponentMove)) opponentPokemon = FightPerformMove.FieldChangeMove(opponentMove, opponentPokemon, turnContext);
+                                    int playerHpShown = turnContext.Player.Hp.Count;
                                     PokemonTeam[] t2Result = FightPerformMove.PerformMove(opponentPokemon, playerPokemon, opponentMove, player.FieldChange, turnContext, false);
                                     playerPokemon = t2Result[1];
                                     opponentPokemon = t2Result[0];
                                     PokemonTeam[] t2SpeCaseResult = FightPerformMove.PerformSpecialCaseMove(opponentPokemon, playerPokemon, opponentMove, turnContext, usedMove);
                                     playerPokemon = t2SpeCaseResult[1];
                                     opponentPokemon = t2SpeCaseResult[0];
+                                    if (playerCloneIsNew) turnContext.Player.Hp.RemoveRange(playerHpShown, turnContext.Player.Hp.Count - playerHpShown);
                                     if (await ManageSpecialCasesAfterMove(opponentMongo, opponentPokemon, playerPokemon, player, turnContext))
                                     {
                                         player = await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
@@ -460,6 +467,7 @@ namespace PkmnRaceBattle.API.Hub
                         {
                             opponentPokemonMongo = (PokemonTeam)opponentPokemon.Clone();
                             opponentPokemon = (PokemonTeam)opponentPokemonMongo.Substitute.Clone();
+                            opponentCloneIsNew = true;
                         }
 
                         if (await ManageSpecialCasesAfterMove(opponentMongo, opponentPokemon, playerPokemon, player, turnContext))
@@ -564,12 +572,14 @@ namespace PkmnRaceBattle.API.Hub
                         {
 
                             if (FightPerformMove.IsFieldChangeMove(usedMove)) player = FightPerformMove.FieldChangeMove(usedMove, player, turnContext);
+                            int opponentHpShown = turnContext.Opponent.Hp.Count;
                             PokemonTeam[] t2Result = FightPerformMove.PerformMove(playerPokemon, opponentPokemon, usedMove, opponentPokemon.FieldChange, turnContext, true, player);
                             playerPokemon = t2Result[0];
                             opponentPokemon = t2Result[1];
                             PokemonTeam[] t2SpeCaseResult = FightPerformMove.PerformSpecialCaseMove(playerPokemon, opponentPokemon, usedMove, turnContext, opponentMove);
                             playerPokemon = t2SpeCaseResult[0];
                             opponentPokemon = t2SpeCaseResult[1];
+                            if (opponentCloneIsNew) turnContext.Opponent.Hp.RemoveRange(opponentHpShown, turnContext.Opponent.Hp.Count - opponentHpShown);
                             if (await ManageSpecialCasesAfterMove(opponentMongo, opponentPokemon, playerPokemon, player, turnContext))
                             {
                                 player = await _mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);

@@ -351,13 +351,17 @@ namespace PkmnRaceBattle.Tests.Moves
                 Pkmn.Create("Mew", 50, "Clonage", "Trempette").WithStats(hp: 400, speed: 300),
                 Pkmn.Create("Ronflex", 50, "Ultimapoing").WithStats(hp: 999, speed: 1, atk: 999));
 
+            // Ronflex détruit le clone dans le tour où il est créé : Mew garde ses PV moins le coût du clone
             await battle.Use("Clonage");
-            await battle.Use("Trempette");
 
             Assert.Null(battle.Mine.Substitute);
             Assert.Equal(300, battle.Mine.CurrHp);
             Assert.Empty(battle.Received("playerPokemonDeath"));
             Assert.Empty(battle.Received("playerLooseFight"));
+
+            // Sans clone, le coup suivant touche Mew
+            await battle.Use("Trempette");
+            Assert.Single(battle.Received("playerLooseFight"));
         }
 
         [Fact]
