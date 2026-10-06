@@ -1,4 +1,6 @@
 # Tests puis déploiement de l'API sur le VPS à chaque push sur master (merge compris).
+# Sur une PR vers master : tests seulement. Détail de chaque test : onglet Checks de la PR
+# ou résumé de l'exécution dans Actions (« Tests API »).
 #
 # Secrets (Settings → Secrets and variables → Actions → Secrets) :
 #   VPS_HOST      IP ou nom du VPS
@@ -14,11 +16,13 @@ name: Déploiement API
 on:
   push:
     branches: [master]
+  # Sur une PR vers master : tests seulement (pas de déploiement), résultat affiché dans la PR
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
-concurrency:
-  group: deploy-api
-  cancel-in-progress: false
+permissions:
+  contents: read
 
 env:
   DEPLOY_PATH: ${{ vars.API_DEPLOY_PATH || '/home/pkmn/publish' }}
@@ -27,17 +31,31 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - run: dotnet test PkmnRaceBattle.Tests
+      - run: dotnet test PkmnRaceBattle.Tests --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+      - name: Rapport de tests
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Tests API
+          path: TestResults/tests.trx
+          reporter: dotnet-trx
 
   deploy:
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: deploy-api
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
