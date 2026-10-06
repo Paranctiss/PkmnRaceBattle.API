@@ -213,6 +213,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public int? EffectChance { get; set; }
 
         public MoveStatsChanges[] StatsChanges { get; set; }
+
+        public PokemonTeamMove Copy() => (PokemonTeamMove)MemberwiseClone();
     }
 
     public class MoveStatsChanges

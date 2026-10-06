@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.Domain.Models.PlayerMongo;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 
 namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
@@ -9,9 +10,8 @@ namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
         {
             PokemonTeam pokemon = new PokemonTeam();
 
-            Random random = new Random();
 
-            return PokemonBaseToTeam.ConvertBaseToTeam(pokemonBase, random.Next(minLvl, maxLvl));
+            return PokemonBaseToTeam.ConvertBaseToTeam(pokemonBase, GameRandom.Next(RandomPurpose.Generation, minLvl, maxLvl));
         }
     }
 }

@@ -19,6 +19,8 @@ namespace PkmnRaceBattle.Domain.Models.BracketMongo
         public string GameCode { get; set; }
         public List<RoundMongo> Rounds { get; set; } = [];
         public List<PlayerMongoModel> Players { get; set; } = [];
+        // Vainqueur de la finale (null tant que le tournoi n'est pas terminé)
+        public string? Champion { get; set; }
     }
 
     public class RoundMongo

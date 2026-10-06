@@ -48,6 +48,9 @@ namespace PkmnRaceBattle.API.Hub
                 else
                 {
                     usedMove = await _mongoPlayerRepository.GetPokemonTeamMoveByName(playerId, playerPokemonId, usedMoveName);
+                    // Plus aucun PP : le Pokémon utilise Lutte
+                    if (playerPokemonMongo.Moves.All(m => m.Pp <= 0))
+                        usedMove = PokemonMoveSelector.ConvertToTeamMove(await _mongoMoveRepository.GetMoveMongoByName("Lutte"));
                 }
                 //usedMove = PokemonMoveSelector.ConvertToTeamMove(await _mongoMoveRepository.GetMoveMongoByName("Furie"));
             }
@@ -90,10 +93,13 @@ namespace PkmnRaceBattle.API.Hub
                 }
                 else
                 {
-                    opponentMove = AIChoseMove.GetARandomMove(opponentPokemonMongo);
+                    opponentMove = AIChoseMove.GetARandomMove(opponentPokemonMongo)
+                        ?? PokemonMoveSelector.ConvertToTeamMove(await _mongoMoveRepository.GetMoveMongoByName("Lutte"));
                     //opponentMove = AIChoseMove.GetThatMove(opponentPokemonMongo, "Bouclier");
                 }
-                await UseMove(player, playerPokemonMongo, usedMove, opponentMongo, opponentPokemonMongo, opponentMove, isAttacking, pvp, index, opponentMongo.ChosenIndex);
+                // Pierres et Super Bonbon : l'adversaire ne joue pas (skipTurn envoyé par le client)
+                bool skipOpponent = skipTurn && usedMove.Type == "item" && usedMove.DamageType == "special";
+                await UseMove(player, playerPokemonMongo, usedMove, opponentMongo, opponentPokemonMongo, opponentMove, isAttacking, pvp, index, opponentMongo.ChosenIndex, skipOpponent);
             }
 
 

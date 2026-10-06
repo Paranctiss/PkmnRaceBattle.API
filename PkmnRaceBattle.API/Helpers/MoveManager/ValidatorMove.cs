@@ -14,6 +14,18 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
                 return false;
             }
 
+            if (pokemon1Move.Type != "item" && pokemon1Move.Type != "swap" && pokemon1.CantUseMoves.Contains(pokemon1Move.NameFr))
+            {
+                turnContext.AddMessage(pokemon1Move.NameFr + " est sous entrave");
+                return false;
+            }
+
+            if (pokemon1Move.Type == "item" && (player1.Items?.FirstOrDefault(i => i.Name == pokemon1Move.NameFr)?.Number ?? 0) <= 0)
+            {
+                turnContext.AddMessage("Vous n'avez plus de " + pokemon1Move.NameFr);
+                return false;
+            }
+
             if(pokemon1Move.Pp <= 0)
             {
                 turnContext.AddMessage("La capacité utilisée n'a plus de PP");
@@ -34,9 +46,18 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
 
             if(pokemon1Move.Type == "item")
             {
-                if(pokemon1Move.NameFr == "Guérison" && (!FightUseItem.IsItemUseful(pokemon1, pokemon1Move.NameFr, turnContext) || pokemon1.CurrHp < pokemon1.BaseHp))
+                // Guérison : utile s'il manque des PV ou s'il y a un statut à soigner
+                if(pokemon1Move.NameFr == "Guérison" && pokemon1.CurrHp > 0 && (FightUseItem.IsItemUseful(pokemon1, "Total Soin", turnContext) || pokemon1.CurrHp < pokemon1.BaseHp))
                 {
                     return true;
+                }
+
+                // Pierre d'évolution : uniquement sur un Pokémon qui évolue avec elle
+                string stone = FightUseItem.GetStoneLabel(pokemon1Move.NameFr);
+                if (stone != "" && pokemon1.EvolutionDetails?.Any(e => e.Item == stone) != true)
+                {
+                    turnContext.AddMessage("Cela n'aura aucun effet");
+                    return false;
                 }
 
                 if(pokemon1Move.DamageType == "ailment" && !FightUseItem.IsItemUseful(pokemon1, pokemon1Move.NameFr, turnContext)){
@@ -58,7 +79,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
                         return false;
                     }
 
-                    if (pokemon1.CurrHp >= pokemon1.BaseHp) 
+                    if (pokemon1.CurrHp >= pokemon1.BaseHp)
                     {
                         turnContext.AddMessage(pokemon1.NameFr + " a déjà ses PV au max");
                         return false;

@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.Domain.Models.PlayerMongo;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.Domain.Models.PlayerMongo;
 
 namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 {
@@ -20,6 +21,8 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     pokeSpeed2 = pokeSpeed2 / 4;
                 }
 
+                // Égalité de vitesse : tirage au sort
+                if (pokeSpeed1 == pokeSpeed2) return GameRandom.Next(RandomPurpose.TurnOrder, 0, 2) == 0;
                 return pokeSpeed1 > pokeSpeed2;
             }
             else

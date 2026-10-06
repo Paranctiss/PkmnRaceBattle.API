@@ -17,7 +17,11 @@ namespace PkmnRaceBattle.API.Hub
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
             PlayerMongo opponent = await _mongoWildPokemonRepository.GetByIdAsync(wildOpponentId);
             PokemonTeam wildPokemon = await _mongoWildPokemonRepository.GetPlayerPokemonById(opponent._id, opponent.Team[0].Id);
-            if (index == -1)
+            if (index == -1 && player.Team.Length >= 6)
+            {
+                // Équipe pleine : le client doit indiquer quel Pokémon remplacer
+            }
+            else if (index == -1)
             {
                 PokemonTeam[] newTeam = new PokemonTeam[player.Team.Length + 1];
                 Array.Copy(player.Team, newTeam, player.Team.Length);

@@ -1,17 +1,38 @@
-﻿using PkmnRaceBattle.API.Hub;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 
 namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 {
     public static class FightAilmentMove
     {
+        private static bool HasType(PokemonTeam pokemon, string type) => pokemon.Types?.Any(t => t.Name == type) ?? false;
+
         public static PokemonTeam PerformAilment(PokemonTeam defenser, PokemonTeamMove move, TurnContext turnContext)
         {
+            // La confusion est un état volatil : elle s'ajoute à un éventuel statut majeur
+            if (move.Ailment == "confusion")
+            {
+                if (defenser.IsConfused != 0) { turnContext.AddMessage(defenser.NameFr + " est déjà confus"); return defenser; }
+                // Compteur décrémenté au début de chaque tour : 1 à 4 tours de confusion
+                defenser.IsConfused = GameRandom.Next(RandomPurpose.Duration, 2, 6);
+                turnContext.AddMessage("Cela rend " + defenser.NameFr + " confus");
+                return defenser;
+            }
+
+            // Une capacité de statut Électrik (Cage Éclair) n'affecte pas les types Sol
+            if (move.DamageType == "status" && move.Type == "electric" && HasType(defenser, "ground"))
+            {
+                turnContext.AddMessage("Cela n'affecte pas " + defenser.NameFr);
+                return defenser;
+            }
+
             if (!defenser.IsBurning && !defenser.IsParalyzed && !defenser.IsFrozen && defenser.IsSleeping == 0 && defenser.IsPoisoned == 0)
             {
                 switch (move.Ailment)
                 {
                     case "paralysis":
+                        if (HasType(defenser, "electric")) break;
                         defenser.IsParalyzed = true;
                         turnContext.AddMessage(defenser.NameFr + " est Paralysé");
                         break;
@@ -23,6 +44,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         }
                         break;
                     case "poison":
+                        if (HasType(defenser, "poison") || HasType(defenser, "steel")) break;
                         if(move.NameFr == "Toxik")
                         {
                             defenser.IsPoisoned = 2;
@@ -38,19 +60,13 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
 
                         break;
                     case "freeze":
+                        if (HasType(defenser, "ice")) break;
                         defenser.IsFrozen = true;
                         turnContext.AddMessage(defenser.NameFr + " est gelé");
                         break;
                     case "sleep":
-                        Random rnd = new Random();
-                        defenser.IsSleeping = rnd.Next(2, 6);
+                        defenser.IsSleeping = GameRandom.Next(RandomPurpose.Duration, 2, 6);
                         turnContext.AddMessage(defenser.NameFr + " s'endort");
-                        break;
-                    case "confusion":
-                        if (defenser.IsConfused != 0) { turnContext.AddMessage(defenser.NameFr + " est déjà confus"); return defenser; }
-                        Random rnde = new Random();
-                        defenser.IsConfused = rnde.Next(1, 5);
-                        turnContext.AddMessage("Cela rend " + defenser.NameFr + " confus");
                         break;
                 }
             }
@@ -62,8 +78,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         {
             if (attacker.IsParalyzed)
             {
-                Random rnd = new Random();
-                int randomValue = rnd.Next(1, 101);
+                int randomValue = GameRandom.Next(RandomPurpose.StatusCheck, 1, 101);
                 if (randomValue <= 25) {
                     turnContext.DeleteLastPrioMessage();
                     turnContext.AddMessage(attacker.NameFr + " est paralysé, il ne peut pas attaquer");
@@ -89,8 +104,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             }
 
             if (attacker.IsConfused > 0) {
-                Random rnd = new Random();
-                int randomValue = rnd.Next(1, 101);
+                int randomValue = GameRandom.Next(RandomPurpose.StatusCheck, 1, 101);
                 if (randomValue <= 50)
                 {
                     turnContext.DeleteLastPrioMessage();
@@ -121,7 +135,17 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return result[1];
         }
 
-        public static PokemonTeam SufferAilment(PokemonTeam pokemon, TurnContext turnContext)
+        // playerSide : camp du Pokémon, pour envoyer la perte de PV au client (null = non envoyée)
+        public static PokemonTeam SufferAilment(PokemonTeam pokemon, TurnContext turnContext, bool? playerSide = null)
+        {
+            int hpBefore = pokemon.CurrHp;
+            pokemon = ApplyAilmentDamage(pokemon, turnContext);
+            if (pokemon.CurrHp < 0) pokemon.CurrHp = 0;
+            if (playerSide != null) FightPerformMove.AddHpChange(turnContext, playerSide.Value, hpBefore - pokemon.CurrHp);
+            return pokemon;
+        }
+
+        private static PokemonTeam ApplyAilmentDamage(PokemonTeam pokemon, TurnContext turnContext)
         {
             if (pokemon.IsBurning && pokemon.CurrHp > 0) {
 
@@ -135,7 +159,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 if (pokemon.IsPoisoned == 1)
                 {
                     poisonDamage = pokemon.BaseHp / 8;
-                    
+
                     turnContext.AddMessage(pokemon.NameFr + " souffre du poison");
                 }
                 else
@@ -154,8 +178,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
         {
             if (pokemon.IsFrozen)
             {
-                Random rnd = new Random();
-                int randomValue = rnd.Next(1, 101);
+                int randomValue = GameRandom.Next(RandomPurpose.StatusCheck, 1, 101);
                 if(randomValue <= 20)
                 {
                     pokemon.IsFrozen = false;
@@ -173,7 +196,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                 }
             }
 
-            if (pokemon.IsConfused > 0) { 
+            if (pokemon.IsConfused > 0) {
                 pokemon.IsConfused--;
                 if(pokemon.IsConfused == 0)
                 {
@@ -188,8 +211,8 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             return pokemon;
         }
 
-        public static PokemonTeam RemoveAllAilments(PokemonTeam pokemon, string exception= "") { 
-        
+        public static PokemonTeam RemoveAllAilments(PokemonTeam pokemon, string exception= "") {
+
             if(exception != "sleep") pokemon.IsSleeping = 0;
             pokemon.IsBurning = false;
             pokemon.IsFrozen = false;
@@ -198,7 +221,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             pokemon.PoisonCount = null;
 
             return pokemon;
-        
+
         }
 
 

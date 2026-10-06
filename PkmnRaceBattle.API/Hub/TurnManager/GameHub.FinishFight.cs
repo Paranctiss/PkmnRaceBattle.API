@@ -1,4 +1,5 @@
 ﻿using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -47,6 +48,22 @@ namespace PkmnRaceBattle.API.Hub
                 }
             }
 
+            // PvP : un K.O. qui laisse des Pokémon aux deux joueurs ne termine pas le combat,
+            // celui qui vient de perdre son Pokémon en envoie un autre pendant que l'autre attend
+            if (opponent.IsPlayer && !unexpectedEnd
+                && player.Team.Any(x => x.CurrHp > 0) && opponent.Team.Any(x => x.CurrHp > 0))
+            {
+                await _mongoPlayerRepository.UpdateAsync(player);
+                await _mongoPlayerRepository.UpdateAsync(opponent);
+                await Clients.Client(opponentConnectionId).SendAsync("playerPokemonDeath", opponentPokemon.NameFr + " est K.O");
+                await Clients.Caller.SendAsync("waitingOpponent");
+                return;
+            }
+
+            // Les effets de terrain ne survivent pas au combat
+            player.FieldChange = null;
+            player.FieldChangeCount = null;
+
             if (player.Team.FirstOrDefault(t => t.CurrHp > 0) != null)
             {
 
@@ -59,6 +76,11 @@ namespace PkmnRaceBattle.API.Hub
                     team.DefSpeChanges = 0;
                     team.SpeedChanges = 0;
                     team.CritChanges = 0;
+                    team.AccuracyChanges = 0;
+                    team.EvasionChanges = 0;
+                    team.IsFlinched = false;
+                    team.Substitute = null;
+                    if (team.IsPoisoned == 2) team.PoisonCount = 0;
                     team.SpecialCases = new();
                     team.MultiTurnsMoveCount = null;
                     team.MultiTurnsMove = null;
@@ -124,7 +146,7 @@ namespace PkmnRaceBattle.API.Hub
                             string message = "Vous n'avez plus de pokémon en forme, vous êtes éliminé.";
                             await Clients.Client(opponentConnectionId).SendAsync("playerLooseFight", message);
                         }
-                        await Task.Delay(turnContext.CalculateDelay());
+                        await GameDelay.Wait(turnContext.CalculateDelay());
                     }
                 }
 
@@ -140,6 +162,10 @@ namespace PkmnRaceBattle.API.Hub
                     team.DefSpeChanges = 0;
                     team.SpeedChanges = 0;
                     team.CritChanges = 0;
+                    team.AccuracyChanges = 0;
+                    team.EvasionChanges = 0;
+                    team.IsFlinched = false;
+                    team.Substitute = null;
                     team.CurrHp = team.BaseHp;
                     team.SpecialCases = new();
                     team.MultiTurnsMoveCount = null;
@@ -190,7 +216,7 @@ namespace PkmnRaceBattle.API.Hub
                     await Clients.Client(opponentConnectionId).SendAsync("useMoveResult", turnContext);
                 }
 
-                await Task.Delay(3000);
+                await GameDelay.Wait(3000);
             }
 
             // Un dresseur PvE à qui il reste des Pokémon continue le combat
@@ -206,7 +232,17 @@ namespace PkmnRaceBattle.API.Hub
             else await this._mongoPlayerRepository.UpdateAsync(opponent);
 
             // Le PvP est piloté par le tournoi, pas par le chemin
-            if (opponent.IsPlayer) return;
+            if (opponent.IsPlayer)
+            {
+                if (!unexpectedEnd)
+                {
+                    string? winnerId = lost ? opponent._id
+                        : opponent.Team.All(x => x.CurrHp <= 0) ? player._id
+                        : null;
+                    if (winnerId != null) await AdvanceTournament(player.RoomId, winnerId);
+                }
+                return;
+            }
 
             if (trainerContinues)
                 await TrainerSendNextPokemon(player, opponent);

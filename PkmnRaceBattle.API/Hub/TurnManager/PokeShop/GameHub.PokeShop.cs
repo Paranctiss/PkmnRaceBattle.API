@@ -24,7 +24,7 @@ namespace PkmnRaceBattle.API.Hub
 
             BagItem boughtItem = player.Items.FirstOrDefault(x => x.Name == itemName);
 
-            if (player.Credits >= boughtItem.Price)
+            if (boughtItem != null && player.Credits >= boughtItem.Price)
             {
                 player.Items.FirstOrDefault(x => x.Name == itemName).Number++;
                 player.Credits -= boughtItem.Price;

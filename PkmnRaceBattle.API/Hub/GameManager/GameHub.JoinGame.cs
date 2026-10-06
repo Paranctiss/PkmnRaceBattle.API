@@ -34,10 +34,13 @@ namespace PkmnRaceBattle.API.Hub
                 }
             }
 
+            // Salle inconnue : on n'inscrit pas le joueur
+            if (await _mongoRoomRepository.GetByRoomIdAsync(gameCode) == null) return;
+
             // Ajouter l'utilisateur à la nouvelle salle
             await Groups.AddToGroupAsync(Context.ConnectionId, gameCode);
             PokemonMongo starterInfos = await _mongoPokemonRepository.GetPokemonMongoById(starterId);
-            PokemonTeam pokemonTeam = GenerateNewPokemon.GenerateNewPokemonTeam(starterInfos, 5, 5);
+            PokemonTeam pokemonTeam = GenerateNewPokemon.GenerateNewPokemonTeam(starterInfos, 5, 6);
 
             //PokemonMongo pkmn4 = await _mongoPokemonRepository.GetPokemonMongoById(149);
             //PokemonTeam pkmn4Team = GenerateNewPokemon.GenerateNewPokemonTeam(pkmn4, 15, 15);

@@ -10,15 +10,15 @@ namespace PkmnRaceBattle.API.Helpers.StatsCalculator
             switch (growthRate)
             {
                 case "fast":
-                    return (int)(0.4 * Math.Pow(level, 3));
+                    return 4 * level * level * level / 5;
                 case "medium":
-                    return (int)(0.8 * Math.Pow(level, 3));
+                    return level * level * level;
                 case "medium-fast":
                     return (int)(Math.Pow(level, 3));
                 case "medium-slow":
-                    return (int)(1.2 * Math.Pow(level, 3) - 15 * Math.Pow(level, 2) + 100 * level - 140);
+                    return 6 * level * level * level / 5 - 15 * level * level + 100 * level - 140;
                 case "slow":
-                    return (int)(1.25 * Math.Pow(level, 3));
+                    return 5 * level * level * level / 4;
                 default:
                     throw new ArgumentException("Taux de croissance invalide");
             }
@@ -45,8 +45,8 @@ namespace PkmnRaceBattle.API.Helpers.StatsCalculator
             int level = defeatedPokemon.Level;
 
 
-            double wildModifier = isTrainer ? 1.5 : 1.0; 
-            double expShareModifier = hasExpShare ? 1.5 : 1.0; 
+            double wildModifier = isTrainer ? 1.5 : 1.0;
+            double expShareModifier = hasExpShare ? 1.5 : 1.0;
             //double participantsModifier = 1.0 / participantsCount; // Partage entre les Pokémon participants
 
             int expGained = (int)((baseExp * level * wildModifier * expShareModifier) / 7);

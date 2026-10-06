@@ -36,12 +36,7 @@ namespace PkmnRaceBattle.Persistence.Repositories
             return await _bracketCollection.Find(x => x.GameCode == gameCode).FirstOrDefaultAsync();
         }
 
-        public async Task<BracketMongo> AddWinnerToNextRound(BracketMongo bracket, int round, string userId)
-        {
-            bracket.Rounds[round-1].PlayersInRace.Add(userId);
-            bracket.Rounds[round-1].PlayersInRace.Remove("?");
+        public async Task UpdateAsync(BracketMongo bracket) =>
             await _bracketCollection.ReplaceOneAsync(x => x._id == bracket._id, bracket);
-            return bracket;
-        }
     }
 }

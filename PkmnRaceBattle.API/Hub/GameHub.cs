@@ -60,7 +60,7 @@
 
     public class PokemonChanges
     {
-        public List<int> Hp { get; set; } = new List<int>(); 
+        public List<int> Hp { get; set; } = new List<int>();
         public int Atk { get; set; } = 0;
         public int AtkSpe { get; set; } = 0;
         public int Def { get; set; } = 0;
@@ -75,12 +75,14 @@
                 case "attack":
                     Atk += change;
                     break;
+                case "special-attack":
                 case "attack-special":
                     AtkSpe += change;
                     break;
                 case "defense":
                     Def += change;
                     break;
+                case "special-defense":
                 case "defense-special":
                     DefSpe += change;
                     break;

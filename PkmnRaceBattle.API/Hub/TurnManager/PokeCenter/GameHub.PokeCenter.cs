@@ -33,6 +33,11 @@ namespace PkmnRaceBattle.API.Hub
                 player.Team[i].IsSleeping = 0;
                 player.Team[i].IsFrozen = false;
                 player.Team[i] = PokemonStatesHelper.ResetForSwap(player.Team[i]);
+                foreach (PokemonTeamMove move in player.Team[i].Moves)
+                {
+                    MoveMongo reference = await _mongoMoveRepository.GetMoveMongoByName(move.NameFr);
+                    if (reference != null) move.Pp = reference.Pp;
+                }
             }
 
             await _mongoPlayerRepository.UpdateAsync(player);

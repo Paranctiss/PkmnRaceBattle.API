@@ -15,7 +15,8 @@ namespace PkmnRaceBattle.Application.Contracts
 
         public Task<PokemonMongo> GetRandom();
 
-        public Task<PokemonMongo> GetRandomByEnvironment(string  environment);
+        // Pokémon tiré parmi ceux de l'environnement dont le niveau minimum est <= level (tirage pondéré par la rareté)
+        public Task<PokemonMongo> GetRandomByEnvironment(string environment, int level);
 
         public Task CreateAsync(PokemonMongo newPokemon);
 

@@ -23,6 +23,15 @@ namespace PkmnRaceBattle.API.Hub
 
             PokemonTeam pokemon = player.Team.FirstOrDefault(x => x.Id == pokemonId);
 
+            if (pokemon == null || pokemon.CurrHp <= 0 || pokemon.Id == player.Team[0].Id)
+            {
+                TurnContext refused = new TurnContext();
+                refused.AddMessage("Ce Pokémon ne peut pas être envoyé au combat");
+                await Clients.Caller.SendAsync("useMoveResult", refused);
+                await Clients.Caller.SendAsync("turnFinished", player, opponent);
+                return;
+            }
+
             if (player.Team[0].MultiTurnsMove != null && (player.Team[0].MultiTurnsMove.NameFr == "Ligotage" || player.Team[0].MultiTurnsMove.NameFr == "Étreinte") && player.Team[0].CurrHp > 0)
             {
                 TurnContext turnContext = new TurnContext();

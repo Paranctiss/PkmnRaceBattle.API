@@ -1,4 +1,5 @@
 ﻿using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
@@ -41,7 +42,7 @@ namespace PkmnRaceBattle.API.Hub
                 TurnContext turnContext = new TurnContext();
                 turnContext.AddPrioMessage(trainer.Name + " envoie " + trainer.Team[0].NameFr);
                 await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                await Task.Delay(1000);
+                await GameDelay.Wait(1000);
                 turnContext = new();
                 await Clients.Caller.SendAsync("onTrainerSwitchPokemon", trainer);
             }
