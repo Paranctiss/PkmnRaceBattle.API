@@ -9,6 +9,8 @@ namespace PkmnRaceBattle.Tests.Contract
     // (dépôt voisin ../PokemonRaceBattle) et vérifient qu'il correspond au serveur. Ils sont ignorés si le client est absent.
     public class ClientServerContractTests
     {
+        // Nom du dossier du client : PokemonRaceBattle en local, PkmnRaceBattle (nom du dépôt GitHub) dans un clone frais
+        private static readonly string[] ClientFolders = { "PokemonRaceBattle", "PkmnRaceBattle" };
         private static readonly string? ClientRoot = FindClient();
         private static readonly string ServerRoot = FindServer();
 
@@ -16,12 +18,16 @@ namespace PkmnRaceBattle.Tests.Contract
         {
             for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
             {
-                string candidate = System.IO.Path.Combine(dir.FullName, "PokemonRaceBattle", "src", "app");
-                if (Directory.Exists(candidate)) return candidate;
+                foreach (string folder in ClientFolders)
+                {
+                    string candidate = System.IO.Path.Combine(dir.FullName, folder, "src", "app");
+                    if (Directory.Exists(candidate)) return candidate;
+                }
             }
             // Exécution depuis le dossier temporaire de build : on part du code source du projet de tests
-            string fromSource = System.IO.Path.GetFullPath(System.IO.Path.Combine(SourceDir(), "..", "..", "PokemonRaceBattle", "src", "app"));
-            return Directory.Exists(fromSource) ? fromSource : null;
+            return ClientFolders
+                .Select(folder => System.IO.Path.GetFullPath(System.IO.Path.Combine(SourceDir(), "..", "..", folder, "src", "app")))
+                .FirstOrDefault(Directory.Exists);
         }
 
         private static string FindServer() => System.IO.Path.GetFullPath(System.IO.Path.Combine(SourceDir(), "..", "PkmnRaceBattle.API"));
