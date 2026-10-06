@@ -42,7 +42,7 @@ namespace PkmnRaceBattle.API.Hub
                 TurnContext turnContext = new TurnContext();
                 turnContext.AddPrioMessage(trainer.Name + " envoie " + trainer.Team[0].NameFr);
                 await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                await GameDelay.Wait(1000);
+                await GameDelay.Wait(GameDelay.Message);
                 turnContext = new();
                 await Clients.Caller.SendAsync("onTrainerSwitchPokemon", trainer);
             }

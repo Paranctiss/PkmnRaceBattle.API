@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.API.Hub;
+﻿using PkmnRaceBattle.API.Helpers.Randomness;
+using PkmnRaceBattle.API.Hub;
 
 namespace PkmnRaceBattle.API.Hub
 {
@@ -33,10 +34,10 @@ namespace PkmnRaceBattle.API.Hub
         public int CalculateDelay()
         {
             int delay = 0;
-            delay += Messages.Count * 1000;
-            delay += PrioMessages.Count * 1000;
-            delay += Player.Hp.Count * 500;
-            delay += Opponent.Hp.Count * 500;
+            delay += Messages.Count * GameDelay.Message;
+            delay += PrioMessages.Count * GameDelay.Message;
+            delay += Player.Hp.Count * GameDelay.HpChange;
+            delay += Opponent.Hp.Count * GameDelay.HpChange;
             return delay;
         }
     }

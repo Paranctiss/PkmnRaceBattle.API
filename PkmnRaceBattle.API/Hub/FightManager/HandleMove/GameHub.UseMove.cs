@@ -97,15 +97,15 @@ namespace PkmnRaceBattle.API.Hub
                 {
                     await Clients.Caller.SendAsync("launchBall", usedMove.NameFr, turnContext);
                     catchValue = FightCatch.TryCatchPokemon(opponentPokemon, usedMove.NameFr);
-                    await GameDelay.Wait(1000);
+                    await GameDelay.Wait(GameDelay.BallShake);
                     await Clients.Caller.SendAsync("catchResult", catchValue);
                     if (catchValue == -1)
                     {
-                        await GameDelay.Wait(1000);
+                        await GameDelay.Wait(GameDelay.BallShake);
                     }
                     else
                     {
-                        await GameDelay.Wait(1000 * (catchValue + 1));
+                        await GameDelay.Wait(GameDelay.BallShake * (catchValue + 1));
                     }
 
                 }
@@ -115,7 +115,7 @@ namespace PkmnRaceBattle.API.Hub
                     {
                         await Clients.Caller.SendAsync("swapPokemon", playerPokemon, turnContext.PrioMessages[0]);
                         if (pvp) await Clients.Client(opponentConnectionId).SendAsync("foeSwapPokemon", playerPokemon, turnContext.PrioMessages[0]);
-                        await GameDelay.Wait(2000);
+                        await GameDelay.Wait(GameDelay.StandaloneMessage);
                     }
                     else
                     {
@@ -143,7 +143,7 @@ namespace PkmnRaceBattle.API.Hub
                             {
                                 await HandleUseMoveResult(turnContext, opponentConnectionId);
                                 //await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                                await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                                await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                                 turnContext = new();
                             }
 
@@ -169,7 +169,7 @@ namespace PkmnRaceBattle.API.Hub
                                         string message = oldPkmnName + " a évolué en " + playerPokemon.NameFr;
 
                                         await Clients.Caller.SendAsync("pokemonLevelUp", message, playerPokemon, new List<MoveMongo>());
-                                        await GameDelay.Wait(500);
+                                        await GameDelay.Wait(GameDelay.TurnPause);
                                     }
 
                                 }
@@ -183,7 +183,7 @@ namespace PkmnRaceBattle.API.Hub
                                 await this._mongoPlayerRepository.UpdatePokemonTeamAsync(playerPokemon, player);
                                 await Clients.Caller.SendAsync("useItemResult", turnContext, indexPlayer);
                                 if (indexPlayer != 0) playerPokemon = playerPokemonMongo;
-                                await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                                await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                                 turnContext = new();
                             }
 
@@ -200,7 +200,7 @@ namespace PkmnRaceBattle.API.Hub
                                 opponentMongo = await _mongoWildPokemonRepository.UpdatePokemonTeamAsync(opponentPokemon, opponentMongo);
                                 await HandleUseMoveResult(turnContext, opponentConnectionId);
                                 //await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                                await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                                await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                                 await FinishFight(player, opponentMongo, true);
                                 return;
                             }
@@ -219,7 +219,8 @@ namespace PkmnRaceBattle.API.Hub
 
                 if (catchValue == -1)//Pokémon capturé
                 {
-                    await GameDelay.Wait(4000);
+                    // Fin des secousses puis message de capture côté client
+                    await GameDelay.Wait(2 * GameDelay.BallShake + GameDelay.StandaloneMessage);
                     opponentMongo.Team[0] = opponentPokemon;
                     await Clients.Caller.SendAsync("caughtPokemon", opponentMongo);
                     skipTurn = true;
@@ -300,7 +301,7 @@ namespace PkmnRaceBattle.API.Hub
                                         opponentMongo = await _mongoWildPokemonRepository.UpdatePokemonTeamAsync(opponentPokemon, opponentMongo);
                                         await HandleUseMoveResult(turnContext, opponentConnectionId);
                                         //await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                                        await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                                        await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                                         await FinishFight(player, opponentMongo, true);
                                         return;
                                     }
@@ -429,7 +430,7 @@ namespace PkmnRaceBattle.API.Hub
                     {
                         await Clients.Caller.SendAsync("foeSwapPokemon", opponentPokemon, turnContext.PrioMessages[0]);
                         if (pvp) await Clients.Client(opponentConnectionId).SendAsync("swapPokemon", opponentPokemon, turnContext.PrioMessages[0]);
-                        await GameDelay.Wait(2000);
+                        await GameDelay.Wait(GameDelay.StandaloneMessage);
                     }
                     else
                     {
@@ -446,7 +447,7 @@ namespace PkmnRaceBattle.API.Hub
                         {
                             await HandleUseMoveResult(turnContext, opponentConnectionId);
                             //await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                            await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                            await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                             turnContext = new();
                         }
 
@@ -459,7 +460,7 @@ namespace PkmnRaceBattle.API.Hub
                             await Clients.Caller.SendAsync("useMoveResult", turnContext);
                             await Clients.Client(opponentConnectionId).SendAsync("useItemResult", turnContext, indexOponnent);
                             if (indexOponnent != 0) opponentPokemon = opponentPokemonMongo;
-                            await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                            await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                             turnContext = new();
                         }
 
@@ -476,7 +477,7 @@ namespace PkmnRaceBattle.API.Hub
                             opponentMongo = await _mongoWildPokemonRepository.UpdatePokemonTeamAsync(opponentPokemon, opponentMongo);
                             await HandleUseMoveResult(turnContext, opponentConnectionId);
                             //await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                            await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                            await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                             await FinishFight(player, opponentMongo, true);
                             return;
                         }
@@ -491,7 +492,7 @@ namespace PkmnRaceBattle.API.Hub
                         await HandleUseMoveResult(turnContext, opponentConnectionId);
                     }
                 }
-                await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                 turnContext = new();
                 if (playerPokemon.CurrHp <= 0)
                 {
@@ -586,7 +587,7 @@ namespace PkmnRaceBattle.API.Hub
                                 opponentMongo = await _mongoWildPokemonRepository.UpdatePokemonTeamAsync(opponentPokemon, opponentMongo);
                                 await HandleUseMoveResult(turnContext, opponentConnectionId);
                                 //await Clients.Caller.SendAsync("useMoveResult", turnContext);
-                                await GameDelay.Wait(turnContext.CalculateDelay() + 500);
+                                await GameDelay.Wait(turnContext.CalculateDelay() + GameDelay.TurnPause);
                                 await FinishFight(player, opponentMongo, true);
                                 return;
                             }
