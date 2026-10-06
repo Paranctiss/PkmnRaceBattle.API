@@ -1,6 +1,7 @@
 using PkmnRaceBattle.API.Helper;
 using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
+using PkmnRaceBattle.Domain.Models.RoomMongo;
 using PkmnRaceBattle.Tests.Support;
 
 namespace PkmnRaceBattle.Tests.Hub
@@ -214,6 +215,118 @@ namespace PkmnRaceBattle.Tests.Hub
 
             Assert.Contains(h.Named("UserLeft"), m => m.Target == "group:" + code && m.Arg<string>(0) == hostId);
             Assert.Null(UserConnectionManager.GetConnectionId(hostId, code));
+        }
+
+        [Fact]
+        public async Task QuitterLaSalleDAttente_LeJoueurNEstPlusListe()
+        {
+            var (h, code, hostId) = await CreateGame();
+            await h.Hub("guest").JoinGame("Pierre", 1, "brock", code);
+            string guestId = h.Named("JoinSuccess").Single().Arg<string>(1);
+
+            await h.Hub("guest").LeaveGame(code, guestId);
+
+            List<PlayerMongo> players = await h.Players.GetByRoomId(code);
+            Assert.Equal(hostId, Assert.Single(players)._id);
+            Assert.True(players[0].IsHost);
+        }
+
+        [Fact]
+        public async Task LHoteQuitteLaSalleDAttente_LeJoueurSuivantDevientHote()
+        {
+            var (h, code, hostId) = await CreateGame();
+            await h.Hub("guest").JoinGame("Pierre", 1, "brock", code);
+            string guestId = h.Named("JoinSuccess").Single().Arg<string>(1);
+
+            await h.Hub("host-conn-" + h.RoomId).LeaveGame(code, hostId);
+
+            PlayerMongo guest = Assert.Single(await h.Players.GetByRoomId(code));
+            Assert.Equal(guestId, guest._id);
+            Assert.True(guest.IsHost);
+            Assert.Equal(guestId, h.Rooms.All.Single().hostUserId);
+        }
+
+        [Fact]
+        public async Task QuitterUnePartieEnCours_LeJoueurResteDansLaPartie()
+        {
+            var (h, code, hostId) = await CreateGame();
+            await h.Hub("host").StartGame(code, false, 5);
+
+            await h.Hub("host-conn-" + h.RoomId).LeaveGame(code, hostId);
+
+            Assert.Equal(code, h.Players.Get(hostId).RoomId);
+        }
+
+        private static async Task<(HubHarness h, string code, string hostId, string guestId)> FinishedTournament()
+        {
+            var (h, code, hostId) = await CreateGame();
+            await h.Hub("guest").JoinGame("Pierre", 1, "brock", code);
+            string guestId = h.Named("JoinSuccess").Single().Arg<string>(1);
+            await h.Hub("host").StartGame(code, false, 5);
+            await h.Brackets.CreateAsync(new PkmnRaceBattle.Domain.Models.BracketMongo.BracketMongo
+            {
+                GameCode = code,
+                Players = (await h.Players.GetByRoomId(code)),
+                Champion = guestId,
+                NbTurn = 2
+            });
+            return (h, code, hostId, guestId);
+        }
+
+        [Fact]
+        public async Task Rejouer_RemetLaSalleEnAttenteSansJoueurNiTournoi()
+        {
+            var (h, code, hostId, _) = await FinishedTournament();
+
+            await h.Hub("guest").ReplayGame(code, hostId);
+
+            RoomMongo room = h.Rooms.All.Single();
+            Assert.Equal(0, room.state);
+            Assert.Empty(await h.Players.GetByRoomId(code));
+            Assert.Null(await h.Brackets.GetByRoomId(code));
+        }
+
+        [Fact]
+        public async Task Rejouer_LePremierRevenuDevientHoteLesSuivantsInvites()
+        {
+            var (h, code, hostId, guestId) = await FinishedTournament();
+            await h.Hub("guest").ReplayGame(code, guestId);
+            await h.Hub("host-conn-" + h.RoomId).ReplayGame(code, hostId);
+
+            await h.Hub("guest").JoinGame("Pierre", 7, "brock", code);
+            await h.Hub("host-conn-" + h.RoomId).JoinGame("Sacha", 4, "red", code);
+
+            List<PlayerMongo> players = await h.Players.GetByRoomId(code);
+            Assert.Equal(2, players.Count);
+            PlayerMongo pierre = players.Single(p => p.Name == "Pierre");
+            Assert.True(pierre.IsHost);
+            Assert.False(players.Single(p => p.Name == "Sacha").IsHost);
+            Assert.Equal(7, Assert.Single(pierre.Team).IdDex);
+            Assert.Equal(pierre._id, h.Rooms.All.Single().hostUserId);
+        }
+
+        [Fact]
+        public async Task Rejouer_UnJoueurEnRetardNeRemetPasLaNouvellePartieAZero()
+        {
+            var (h, code, hostId, guestId) = await FinishedTournament();
+            await h.Hub("guest").ReplayGame(code, guestId);
+            await h.Hub("guest").JoinGame("Pierre", 7, "brock", code);
+
+            await h.Hub("host-conn-" + h.RoomId).ReplayGame(code, hostId);
+
+            Assert.Single(await h.Players.GetByRoomId(code));
+        }
+
+        [Fact]
+        public async Task Rejouer_SansTournoiTermine_NeFaitRien()
+        {
+            var (h, code, hostId) = await CreateGame();
+            await h.Hub("host").StartGame(code, false, 5);
+
+            await h.Hub("host-conn-" + h.RoomId).ReplayGame(code, hostId);
+
+            Assert.Equal(1, h.Rooms.All.Single().state);
+            Assert.Single(await h.Players.GetByRoomId(code));
         }
 
         [Fact]

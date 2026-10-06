@@ -8,6 +8,7 @@ using Microsoft.AspNet.SignalR.Messaging;
 using Microsoft.AspNet.SignalR.Tracing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.SignalR;
+using PkmnRaceBattle.Domain.Models.RoomMongo;
 
 namespace PkmnRaceBattle.API.Hub
 {
@@ -35,7 +36,11 @@ namespace PkmnRaceBattle.API.Hub
             }
 
             // Salle inconnue : on n'inscrit pas le joueur
-            if (await _mongoRoomRepository.GetByRoomIdAsync(gameCode) == null) return;
+            RoomMongo room = await _mongoRoomRepository.GetByRoomIdAsync(gameCode);
+            if (room == null) return;
+
+            // Salle sans hôte (hôte parti, ou salle remise à zéro par « Rejouer ») : le premier arrivé le devient
+            bool becomesHost = !(await _mongoPlayerRepository.GetByRoomId(gameCode)).Any(p => p.IsHost);
 
             // Ajouter l'utilisateur à la nouvelle salle
             await Groups.AddToGroupAsync(Context.ConnectionId, gameCode);
@@ -49,10 +54,15 @@ namespace PkmnRaceBattle.API.Hub
             playerMongo.Name = username;
             playerMongo.RoomId = gameCode;
             playerMongo.Team = [pokemonTeam];
-            playerMongo.IsHost = false;
+            playerMongo.IsHost = becomesHost;
             playerMongo.Sprite = trainerSprite;
             PlayerPathHelper.InitPlayerPath(playerMongo);
             string id = await _mongoPlayerRepository.CreateAsync(playerMongo);
+            if (becomesHost)
+            {
+                room.hostUserId = id;
+                await _mongoRoomRepository.UpdateAsync(gameCode, room);
+            }
             UserConnectionManager.AddUserToRoom(id, gameCode, Context.ConnectionId);
             await Clients.Caller.SendAsync("JoinSuccess", gameCode, id);
             await Clients.Group(gameCode).SendAsync("UserJoined", gameCode);
