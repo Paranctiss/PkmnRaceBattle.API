@@ -5,8 +5,10 @@
 #   VPS_USER      utilisateur SSH de déploiement
 #   VPS_SSH_KEY   clé privée SSH dédiée au déploiement (la clé publique dans ~/.ssh/authorized_keys du VPS)
 # Variables facultatives (onglet Variables) :
-#   API_DEPLOY_PATH   dossier de l'API sur le VPS      (défaut : /var/www/pkmnracebattle-api)
+#   API_DEPLOY_PATH   dossier de l'API sur le VPS      (défaut : /home/pkmn/publish)
 #   API_SERVICE       service systemd à redémarrer      (défaut : pkmnracebattle-api)
+# Sur le VPS, l'utilisateur de déploiement possède le dossier (groupe pkmn, qui fait tourner le service)
+# et n'a le droit sudo que pour « systemctl restart <service> ».
 name: Déploiement API
 
 on:
@@ -19,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEPLOY_PATH: ${{ vars.API_DEPLOY_PATH || '/var/www/pkmnracebattle-api' }}
+  DEPLOY_PATH: ${{ vars.API_DEPLOY_PATH || '/home/pkmn/publish' }}
   SERVICE: ${{ vars.API_SERVICE || 'pkmnracebattle-api' }}
 
 jobs:
@@ -50,9 +52,10 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
       - name: Envoi sur le VPS
-        # appsettings*.json du VPS conservés (chaîne de connexion Mongo de prod)
+        # appsettings*.json du VPS conservés (chaîne de connexion Mongo de prod) ;
+        # fichiers lisibles et modifiables par le groupe pkmn
         run: >
-          rsync -az --delete --exclude 'appsettings*.json'
+          rsync -az --delete --exclude 'appsettings*.json' --chmod=D2775,F664
           -e "ssh -i ~/.ssh/id_deploy"
           out/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:$DEPLOY_PATH/"
       - name: Redémarrage
