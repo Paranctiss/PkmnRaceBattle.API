@@ -46,7 +46,7 @@ namespace PkmnRaceBattle.Tests.Contract
                 .ToList();
 
         private static HashSet<string> ClientListeners() => ClientFiles()
-            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"(?:connection\.on|registerSignalREvent)\('(\w+)'").Select(m => m.Groups[1].Value))
+            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"(?:connection\.on|this\.listen|registerSignalREvent)\('(\w+)'").Select(m => m.Groups[1].Value))
             .ToHashSet();
 
         private static HashSet<string> ServerEvents() => Directory.EnumerateFiles(System.IO.Path.Combine(ServerRoot, "Hub"), "*.cs", SearchOption.AllDirectories)
