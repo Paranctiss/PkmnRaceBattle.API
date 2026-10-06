@@ -37,7 +37,7 @@ Le jeu est un **mix voulu** : base Gen 1 (151 Pokémon, capacités de RBY, parco
 
 ### TurnContext et animation côté client
 
-`TurnContext` accumule `PrioMessages`, `Messages` et, pour chaque camp (`Player` / `Opponent`), la liste des **variations de PV** (`Hp`, positif = dégâts, négatif = soin) et des **paliers de stats** gagnés/perdus. Le serveur envoie plusieurs `useMoveResult` par tour et attend `CalculateDelay()` ms entre chaque (1000 par message, 500 par variation de PV) pendant que `BattleFieldComponent` les joue dans l'ordre : messages prioritaires → stats → PV joueur → PV adversaire → messages.
+`TurnContext` accumule `PrioMessages`, `Messages` et, pour chaque camp (`Player` / `Opponent`), la liste des **variations de PV** (`Hp`, positif = dégâts, négatif = soin) et des **paliers de stats** gagnés/perdus. Le serveur envoie plusieurs `useMoveResult` par tour et attend `CalculateDelay()` ms entre chaque (`GameDelay.Message` = 700 par message, `GameDelay.HpChange` = 300 par variation de PV, alignés sur `shared/utils/timings.ts` du client) pendant que `BattleFieldComponent` les joue dans l'ordre : messages prioritaires → stats → PV joueur → PV adversaire → messages.
 **Invariant** (testé pour chaque capacité) : la somme des variations envoyées doit égaler la variation réelle des PV, sinon la barre de vie du client est fausse jusqu'au `turnFinished`. En PvP, le contexte est inversé (`HandleUseMoveResult`) avant l'envoi à l'adversaire.
 
 ## 3. État d'un Pokémon en combat (`PokemonTeam`)

@@ -216,7 +216,7 @@ namespace PkmnRaceBattle.API.Hub
                     await Clients.Client(opponentConnectionId).SendAsync("useMoveResult", turnContext);
                 }
 
-                await GameDelay.Wait(3000);
+                await GameDelay.Wait(GameDelay.StandaloneMessage + GameDelay.TurnPause);
             }
 
             // Un dresseur PvE à qui il reste des Pokémon continue le combat

@@ -105,9 +105,9 @@ namespace PkmnRaceBattle.API.Hub
                 if (learnedMove != "") message += "| " + oldPkmnName + " apprend " + learnedMove;
 
                 await Clients.Caller.SendAsync("pokemonLevelUp", message, team, movesToLearn);
-                int delay = 500;
-                if (evolvedThisTurn) delay += 500;
-                if (learnedMove != "") delay += 500;
+                int delay = GameDelay.TurnPause;
+                if (evolvedThisTurn) delay += GameDelay.TurnPause;
+                if (learnedMove != "") delay += GameDelay.TurnPause;
                 await GameDelay.Wait(delay);
             }
 
