@@ -1,5 +1,7 @@
 using PkmnRaceBattle.API.Helpers.PathManager;
+using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
+using PkmnRaceBattle.Domain.Models.RoomMongo;
 using PkmnRaceBattle.Tests.Support;
 using PathModel = PkmnRaceBattle.Domain.Models.PlayerMongo.Path;
 
@@ -336,6 +338,52 @@ namespace PkmnRaceBattle.Tests.Hub
             await h.Hub(HubHarness.Connection(player._id)).ChooseNextPath(player._id, 3, 2);
 
             Assert.Equal("Foret", h.Players.Get(player._id).CurrentPath.EnvironmentName);
+        }
+
+        // Minuteur écoulé : le combat en cours se termine (FinishFight → GetNewTurn) sans relancer de tour
+        private static async Task EndRace(HubHarness h) =>
+            await h.Rooms.CreateAsync(new RoomMongo { roomId = h.RoomId, state = GameHub.RoomStateRaceOver });
+
+        [Fact]
+        public async Task CourseTerminee_NouveauTour_NeLancePasDeCombatEtRenvoieLaFin()
+        {
+            var (h, player) = await Setup(1, 1, "Plaine", fights: 2);
+            await EndRace(h);
+            using var _ = TestRandom.Neutral().Install();
+
+            await NewTurn(h, player);
+
+            Assert.Empty(h.Named("responseWildFight"));
+            Assert.Empty(h.Named("responseTrainerFight"));
+            Assert.Contains(h.Named("TimerEnded"), m => m.Target == "caller:" + HubHarness.Connection(player._id));
+            Assert.Equal(2, h.Players.Get(player._id).MapFightCount);
+        }
+
+        [Fact]
+        public async Task CourseTerminee_ChoixDeDestination_NeDeplacePasLeJoueur()
+        {
+            var (h, player) = await Setup(2, 1, "Foret", fights: 6);
+            await EndRace(h);
+            using var _ = TestRandom.Neutral().Install();
+
+            await h.Hub(HubHarness.Connection(player._id)).ChooseNextPath(player._id, 3, 1);
+
+            Assert.Equal("Foret", h.Players.Get(player._id).CurrentPath.EnvironmentName);
+            Assert.Empty(h.Named("responseWildFight"));
+            Assert.Single(h.Named("TimerEnded"));
+        }
+
+        [Fact]
+        public async Task CourseEnCours_NouveauTour_LanceLeCombat()
+        {
+            var (h, player) = await Setup(1, 1, "Plaine", fights: 2);
+            await h.Rooms.CreateAsync(new RoomMongo { roomId = h.RoomId, state = 1 });
+            using var _ = TestRandom.Neutral().Install();
+
+            await NewTurn(h, player);
+
+            Assert.Single(h.Named("responseWildFight"));
+            Assert.Empty(h.Named("TimerEnded"));
         }
 
         [Fact]

@@ -1,4 +1,5 @@
 using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Tests.Support;
 
@@ -198,6 +199,7 @@ namespace PkmnRaceBattle.Tests.Hub
             for (int i = 0; i < 50 && !h.Named("TimerEnded").Any(); i++) await Task.Delay(100);
 
             Assert.Contains(h.Named("TimerEnded"), m => m.Target == "group:" + code);
+            Assert.Equal(GameHub.RoomStateRaceOver, h.Rooms.All.Single().state);
             PokemonTeam pokemon = h.Players.Get(hostId).Team[0];
             Assert.Equal(pokemon.BaseHp, pokemon.CurrHp);
             Assert.Equal(0, pokemon.IsPoisoned);

@@ -9,6 +9,7 @@ namespace PkmnRaceBattle.API.Hub
         public async Task GetNewTurn(string userId)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
+            if (await StopIfRaceOver(player)) return;
 
             if (PlayerPathHelper.IsCurrentMapCompleted(player))
             {
@@ -40,6 +41,7 @@ namespace PkmnRaceBattle.API.Hub
         public async Task ChooseNextPath(string userId, int x, int y)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
+            if (await StopIfRaceOver(player)) return;
 
             PathPoint? chosenPoint = PlayerPathHelper.IsCurrentMapCompleted(player)
                 ? PlayerPathHelper.GetNextPathPoints(player).FirstOrDefault(p => p.X == x && p.Y == y)
@@ -56,6 +58,15 @@ namespace PkmnRaceBattle.API.Hub
             await _mongoPlayerRepository.UpdateAsync(player);
 
             await LaunchTurnOnCurrentPath(player);
+        }
+
+        // Minuteur écoulé : un combat commencé avant la fin ne relance pas de tour,
+        // le joueur reste sur l'écran de fin (TimerEnded renvoyé au cas où il l'aurait manqué)
+        private async Task<bool> StopIfRaceOver(PlayerMongo player)
+        {
+            if (!await IsRaceOver(player.RoomId)) return false;
+            await Clients.Caller.SendAsync("TimerEnded", player.RoomId);
+            return true;
         }
 
         private async Task LaunchTurnOnCurrentPath(PlayerMongo player)

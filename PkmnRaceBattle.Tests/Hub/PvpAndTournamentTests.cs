@@ -238,6 +238,26 @@ namespace PkmnRaceBattle.Tests.Hub
             return (h, players);
         }
 
+        [Fact]
+        public async Task Tableau_SoigneLesEquipes()
+        {
+            // Un combat encore en cours à la fin du minuteur a pu enregistrer des dégâts après le soin de fin de course
+            var (h, all) = await Room(2);
+            PlayerMongo hurt = h.Players.Get(all[0]._id);
+            hurt.Team[0].CurrHp = 1;
+            hurt.Team[0].IsBurning = true;
+            h.UpdatePlayer(hurt);
+            using var _ = new TestRandom(5).Install();
+
+            await h.Hub("host").BuildTournament(h.RoomId);
+
+            PokemonTeam pokemon = h.Players.Get(hurt._id).Team[0];
+            Assert.Equal(pokemon.BaseHp, pokemon.CurrHp);
+            Assert.False(pokemon.IsBurning);
+            PokemonTeam inBracket = h.Brackets.All.Single().Players.Single(p => p._id == hurt._id).Team[0];
+            Assert.Equal(inBracket.BaseHp, inBracket.CurrHp);
+        }
+
         [Theory]
         [InlineData(2, 1)]
         [InlineData(4, 2)]

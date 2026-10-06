@@ -16,6 +16,9 @@ namespace PkmnRaceBattle.API.Hub
     {
         public async Task BuildTournament(string gameCode)
         {
+            // Un combat en cours à la fin du minuteur a pu enregistrer des dégâts après le soin de fin de course
+            await HealTeamsForTournament(gameCode);
+
             List<PlayerMongo> playersInRoom = await _mongoPlayerRepository.GetByRoomId(gameCode);
 
             //Réarangement aléatoire pour l'arbre
