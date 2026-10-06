@@ -1,0 +1,59 @@
+# Tests puis déploiement de l'API sur le VPS à chaque push sur master (merge compris).
+#
+# Secrets (Settings → Secrets and variables → Actions → Secrets) :
+#   VPS_HOST      IP ou nom du VPS
+#   VPS_USER      utilisateur SSH de déploiement
+#   VPS_SSH_KEY   clé privée SSH dédiée au déploiement (la clé publique dans ~/.ssh/authorized_keys du VPS)
+# Variables facultatives (onglet Variables) :
+#   API_DEPLOY_PATH   dossier de l'API sur le VPS      (défaut : /var/www/pkmnracebattle-api)
+#   API_SERVICE       service systemd à redémarrer      (défaut : pkmnracebattle-api)
+name: Déploiement API
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  DEPLOY_PATH: ${{ vars.API_DEPLOY_PATH || '/var/www/pkmnracebattle-api' }}
+  SERVICE: ${{ vars.API_SERVICE || 'pkmnracebattle-api' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test PkmnRaceBattle.Tests
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publication
+        run: dotnet publish PkmnRaceBattle.API/PkmnRaceBattle.API.csproj -c Release -o out
+      - name: Clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+      - name: Envoi sur le VPS
+        # appsettings*.json du VPS conservés (chaîne de connexion Mongo de prod)
+        run: >
+          rsync -az --delete --exclude 'appsettings*.json'
+          -e "ssh -i ~/.ssh/id_deploy"
+          out/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:$DEPLOY_PATH/"
+      - name: Redémarrage
+        run: ssh -i ~/.ssh/id_deploy "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "sudo systemctl restart $SERVICE && systemctl is-active $SERVICE"
