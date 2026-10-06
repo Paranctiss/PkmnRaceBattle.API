@@ -48,6 +48,18 @@ namespace PkmnRaceBattle.API.Hub
                 }
             }
 
+            // PvP : un K.O. qui laisse des Pokémon aux deux joueurs ne termine pas le combat,
+            // celui qui vient de perdre son Pokémon en envoie un autre pendant que l'autre attend
+            if (opponent.IsPlayer && !unexpectedEnd
+                && player.Team.Any(x => x.CurrHp > 0) && opponent.Team.Any(x => x.CurrHp > 0))
+            {
+                await _mongoPlayerRepository.UpdateAsync(player);
+                await _mongoPlayerRepository.UpdateAsync(opponent);
+                await Clients.Client(opponentConnectionId).SendAsync("playerPokemonDeath", opponentPokemon.NameFr + " est K.O");
+                await Clients.Caller.SendAsync("waitingOpponent");
+                return;
+            }
+
             // Les effets de terrain ne survivent pas au combat
             player.FieldChange = null;
             player.FieldChangeCount = null;
@@ -220,7 +232,17 @@ namespace PkmnRaceBattle.API.Hub
             else await this._mongoPlayerRepository.UpdateAsync(opponent);
 
             // Le PvP est piloté par le tournoi, pas par le chemin
-            if (opponent.IsPlayer) return;
+            if (opponent.IsPlayer)
+            {
+                if (!unexpectedEnd)
+                {
+                    string? winnerId = lost ? opponent._id
+                        : opponent.Team.All(x => x.CurrHp <= 0) ? player._id
+                        : null;
+                    if (winnerId != null) await AdvanceTournament(player.RoomId, winnerId);
+                }
+                return;
+            }
 
             if (trainerContinues)
                 await TrainerSendNextPokemon(player, opponent);

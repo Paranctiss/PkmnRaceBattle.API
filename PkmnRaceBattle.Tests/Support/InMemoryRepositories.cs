@@ -238,13 +238,11 @@ namespace PkmnRaceBattle.Tests.Support
             return Task.CompletedTask;
         }
 
-        public Task<BracketMongo> AddWinnerToNextRound(BracketMongo bracket, int round, string userId)
+        public Task UpdateAsync(BracketMongo bracket)
         {
-            bracket.Rounds[round - 1].PlayersInRace.Add(userId);
-            bracket.Rounds[round - 1].PlayersInRace.Remove("?");
             int index = _store.FindIndex(b => b._id == bracket._id);
             if (index != -1) _store[index] = GameData.Clone(bracket);
-            return Task.FromResult(bracket);
+            return Task.CompletedTask;
         }
     }
 }

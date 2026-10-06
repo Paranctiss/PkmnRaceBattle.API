@@ -54,25 +54,72 @@ namespace PkmnRaceBattle.API.Hub
             bracket.Players = playersInRoom;
             bracket.NbTurn = 1;
             bracket.GameCode = gameCode;
-            for (int i = 1; i <= playersInRoom.Count / 2; i++)
+
+            // log2(N) tours, de la finale (Rounds[0]) au premier tour (Rounds[^1]) ; RoundNumber 1 = premier tour
+            int nbRounds = 1;
+            while ((1 << nbRounds) < playersInRoom.Count) nbRounds++;
+            for (int roundNumber = nbRounds; roundNumber >= 1; roundNumber--)
             {
                 RoundMongo roundMongo = new RoundMongo();
-                roundMongo.RoundNumber = (playersInRoom.Count / 2) + 1 - i;
-                int nbPlayers = i * 2;
-                for (int y = 0; y < nbPlayers; y++)
+                roundMongo.RoundNumber = roundNumber;
+                int nbSlots = 1 << (nbRounds - roundNumber + 1);
+                for (int y = 0; y < nbSlots; y++)
                 {
                     roundMongo.PlayersInRace.Add("?");
                 }
                 bracket.Rounds.Add(roundMongo);
             }
-            bracket.Rounds[bracket.Rounds.Count - 1].PlayersInRace = [];
-            foreach (PlayerMongo playerBracket in bracket.Players)
+
+            // Un joueur par duel d'abord, puis les adversaires : les places restantes ("?") sont des exemptions
+            List<string> firstRound = bracket.Rounds[^1].PlayersInRace;
+            int nbMatches = firstRound.Count / 2;
+            for (int i = 0; i < playersInRoom.Count; i++)
             {
-                bracket.Rounds[bracket.Rounds.Count - 1].PlayersInRace.Add(playerBracket._id);
+                int slot = i < nbMatches ? i * 2 : (i - nbMatches) * 2 + 1;
+                firstRound[slot] = playersInRoom[i]._id;
             }
+            // Un joueur sans adversaire passe directement au tour suivant
+            for (int match = 0; match < nbMatches; match++)
+            {
+                if (firstRound[match * 2 + 1] == "?") PlaceTournamentWinner(bracket, firstRound[match * 2]);
+            }
+
             await _mongoBracketRepository.CreateAsync(bracket);
 
             await Clients.Group(gameCode).SendAsync("bracketCreated", bracket);
+        }
+
+        // Qualifie le vainqueur d'un duel du tour en cours ; passe au tour suivant quand tous les duels sont joués
+        private static void PlaceTournamentWinner(BracketMongo bracket, string winnerId)
+        {
+            int current = bracket.Rounds.Count - bracket.NbTurn;
+            if (current < 0) return;
+            int position = bracket.Rounds[current].PlayersInRace.IndexOf(winnerId);
+            if (position == -1) return;
+
+            if (current == 0)
+            {
+                // Finale gagnée : NbTurn dépasse le nombre de tours, le tournoi est terminé
+                bracket.NbTurn++;
+                return;
+            }
+
+            List<string> nextRound = bracket.Rounds[current - 1].PlayersInRace;
+            nextRound[position / 2] = winnerId;
+            if (!nextRound.Contains("?")) bracket.NbTurn++;
+        }
+
+        private async Task AdvanceTournament(string gameCode, string winnerId)
+        {
+            BracketMongo bracket = await _mongoBracketRepository.GetByRoomId(gameCode);
+            if (bracket == null) return;
+
+            int turnBefore = bracket.NbTurn;
+            PlaceTournamentWinner(bracket, winnerId);
+            await _mongoBracketRepository.UpdateAsync(bracket);
+
+            // Tour terminé : tout le monde revient au tableau (l'hôte relance le tour suivant)
+            if (bracket.NbTurn != turnBefore) await Clients.Group(gameCode).SendAsync("bracketCreated", bracket);
         }
     }
 }

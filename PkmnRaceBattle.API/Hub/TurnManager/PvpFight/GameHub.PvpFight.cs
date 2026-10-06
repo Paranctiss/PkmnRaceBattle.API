@@ -15,19 +15,26 @@ namespace PkmnRaceBattle.API.Hub
     {
         public async Task GetPvpFight(string gameCode, string userId)
         {
-            List<PlayerMongo> players = await _mongoPlayerRepository.GetByRoomId(gameCode);
-            PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
             BracketMongo bracket = await _mongoBracketRepository.GetByRoomId(gameCode);
 
-            int playerIndex = bracket.Rounds[bracket.NbTurn - 1].PlayersInRace.IndexOf(userId);
+            // Rounds va de la finale au premier tour : le tour en cours est compté depuis la fin
+            int current = bracket.Rounds.Count - bracket.NbTurn;
+            if (current < 0) return;
+            List<string> playersInRace = bracket.Rounds[current].PlayersInRace;
+
+            // Joueur éliminé (ou tournoi terminé) : pas de combat
+            int playerIndex = playersInRace.IndexOf(userId);
+            if (playerIndex == -1) return;
 
             int opponentIndex = (playerIndex % 2 == 0) ? playerIndex + 1 : playerIndex - 1;
+            string opponentId = playersInRace[opponentIndex];
 
-            string opponentId = bracket.Rounds[bracket.NbTurn - 1].PlayersInRace[opponentIndex];
+            // Exempté (pas d'adversaire) : déjà qualifié pour le tour suivant
+            if (opponentId == "?") return;
 
-            PlayerMongo opponent = bracket.Players.Where(x => x._id == opponentId).FirstOrDefault();
-
-            //PlayerMongo opponent = players.FirstOrDefault(x => x._id != player._id);
+            // Équipe à jour (celle du tableau date de sa création)
+            PlayerMongo opponent = await _mongoPlayerRepository.GetByPlayerIdAsync(opponentId);
+            if (opponent == null) return;
 
             await Clients.Caller.SendAsync("responsePvpFight", opponent);
         }

@@ -17,6 +17,6 @@ namespace PkmnRaceBattle.Application.Contracts
 
         public Task CreateAsync(BracketMongo bracketMongo);
 
-        public Task<BracketMongo> AddWinnerToNextRound(BracketMongo bracket, int round, string userId);
+        public Task UpdateAsync(BracketMongo bracket);
     }
 }

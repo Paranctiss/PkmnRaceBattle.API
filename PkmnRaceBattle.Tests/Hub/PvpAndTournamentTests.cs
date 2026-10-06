@@ -318,5 +318,59 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.Contains(winner._id, bracket.Rounds[0].PlayersInRace);
             Assert.DoesNotContain(loser._id, bracket.Rounds[0].PlayersInRace);
         }
+
+        [Fact]
+        public async Task NombreImpairDeJoueurs_LExempteEstDejaQualifie()
+        {
+            var (h, _) = await Room(3);
+            using var _r = new TestRandom(5).Install();
+            await h.Hub("host").BuildTournament(h.RoomId);
+
+            BracketMongo bracket = h.Brackets.All.Single();
+            List<string> firstRound = bracket.Rounds[^1].PlayersInRace;
+            int bye = firstRound.IndexOf("?");
+            string exempt = firstRound[bye ^ 1];
+            Assert.Equal(1, firstRound.Count(x => x == "?"));
+            Assert.Equal(exempt, bracket.Rounds[0].PlayersInRace[bye / 2]);
+
+            h.Sent.Clear();
+            await h.Hub(HubHarness.Connection(exempt)).GetPvpFight(h.RoomId, exempt);
+            Assert.Empty(h.Named("responsePvpFight"));
+        }
+
+        [Fact]
+        public async Task TourTermine_LesVainqueursSAffrontentAuTourSuivant()
+        {
+            var (h, _) = await Room(4);
+            using var _r = TestRandom.Neutral().Install();
+            await h.Hub("host").BuildTournament(h.RoomId);
+            List<string> order = h.Brackets.All.Single().Rounds[^1].PlayersInRace;
+
+            // Le premier de chaque duel gagne
+            foreach (int match in new[] { 0, 1 })
+            {
+                PlayerMongo winner = h.Players.Get(order[match * 2]);
+                PlayerMongo loser = h.Players.Get(order[match * 2 + 1]);
+                winner.Team[0] = winner.Team[0].WithStats(atk: 999, speed: 300);
+                loser.Team[0] = loser.Team[0].WithStats(hp: 5, speed: 1);
+                h.UpdatePlayer(winner);
+                h.UpdatePlayer(loser);
+                await h.PvpUses(loser, "Charge", winner);
+                await h.PvpUses(winner, "Charge", loser);
+            }
+
+            BracketMongo bracket = h.Brackets.All.Single();
+            Assert.Equal(2, bracket.NbTurn);
+            Assert.Equal(new[] { order[0], order[2] }, bracket.Rounds[0].PlayersInRace);
+            Assert.Contains(h.Named("bracketCreated"), m => m.Target == "group:" + h.RoomId && m.Arg<BracketMongo>(0).NbTurn == 2);
+
+            h.Sent.Clear();
+            await h.Hub(HubHarness.Connection(order[0])).GetPvpFight(h.RoomId, order[0]);
+            Assert.Equal(order[2], h.Named("responsePvpFight").Single().Arg<PlayerMongo>(0)._id);
+
+            h.Sent.Clear();
+            await h.Hub(HubHarness.Connection(order[1])).GetPvpFight(h.RoomId, order[1]);
+            Assert.Empty(h.Named("responsePvpFight"));
+        }
     }
 }
