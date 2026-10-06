@@ -16,6 +16,37 @@ namespace PkmnRaceBattle.API.Hub
     {
         private static readonly Dictionary<string, DateTime> _gameTimers = new Dictionary<string, DateTime>();
         private static readonly Dictionary<string, Timer> _timerObjects = new Dictionary<string, Timer>();
+
+        // RoomMongo.state : 0 = salle d'attente, 1 = course en cours, 2 = course terminée (minuteur écoulé)
+        public const int RoomStateRaceOver = 2;
+
+        private async Task<bool> IsRaceOver(string roomId)
+        {
+            RoomMongo room = await _mongoRoomRepository.GetByRoomIdAsync(roomId);
+            return room != null && room.state >= RoomStateRaceOver;
+        }
+
+        // Fin de la course : les équipes entrent soignées dans le tournoi
+        private async Task HealTeamsForTournament(string gameCode)
+        {
+            List<PlayerMongo> players = await _mongoPlayerRepository.GetByRoomId(gameCode);
+
+            foreach (PlayerMongo player in players)
+            {
+                for (int i = 0; i < player.Team.Length; i++)
+                {
+                    player.Team[i].CurrHp = player.Team[i].BaseHp;
+                    player.Team[i].IsBurning = false;
+                    player.Team[i].IsParalyzed = false;
+                    player.Team[i].IsPoisoned = 0;
+                    player.Team[i].IsSleeping = 0;
+                    player.Team[i].IsFrozen = false;
+                    player.Team[i] = PokemonStatesHelper.ResetForSwap(player.Team[i]);
+                }
+
+                await _mongoPlayerRepository.UpdateAsync(player);
+            }
+        }
         public async Task StartGame(string gameCode, bool checkedTimer, int timerTime)
         {
             RoomMongo room = await _mongoRoomRepository.GetByRoomIdAsync(gameCode);
@@ -42,23 +73,15 @@ namespace PkmnRaceBattle.API.Hub
 
                         if (remainingSeconds <= 0)
                         {
-                            List<PlayerMongo> players = await _mongoPlayerRepository.GetByRoomId(gameCode);
-
-                            foreach (PlayerMongo player in players)
+                            // Course terminée avant le soin : plus aucun tour ne peut être lancé (GetNewTurn)
+                            RoomMongo endedRoom = await _mongoRoomRepository.GetByRoomIdAsync(gameCode);
+                            if (endedRoom != null)
                             {
-                                for (int i = 0; i < player.Team.Length; i++)
-                                {
-                                    player.Team[i].CurrHp = player.Team[i].BaseHp;
-                                    player.Team[i].IsBurning = false;
-                                    player.Team[i].IsParalyzed = false;
-                                    player.Team[i].IsPoisoned = 0;
-                                    player.Team[i].IsSleeping = 0;
-                                    player.Team[i].IsFrozen = false;
-                                    player.Team[i] = PokemonStatesHelper.ResetForSwap(player.Team[i]);
-                                }
-
-                                await _mongoPlayerRepository.UpdateAsync(player);
+                                endedRoom.state = RoomStateRaceOver;
+                                await _mongoRoomRepository.UpdateAsync(gameCode, endedRoom);
                             }
+
+                            await HealTeamsForTournament(gameCode);
 
                             // Le temps est écoulé
                             await _hubContext.Clients.Group(gameCode).SendAsync("TimerEnded", gameCode);
