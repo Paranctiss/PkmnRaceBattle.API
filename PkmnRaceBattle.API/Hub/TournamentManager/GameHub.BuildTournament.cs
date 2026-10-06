@@ -100,6 +100,7 @@ namespace PkmnRaceBattle.API.Hub
             if (current == 0)
             {
                 // Finale gagnée : NbTurn dépasse le nombre de tours, le tournoi est terminé
+                bracket.Champion = winnerId;
                 bracket.NbTurn++;
                 return;
             }

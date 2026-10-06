@@ -372,5 +372,33 @@ namespace PkmnRaceBattle.Tests.Hub
             await h.Hub(HubHarness.Connection(order[1])).GetPvpFight(h.RoomId, order[1]);
             Assert.Empty(h.Named("responsePvpFight"));
         }
+
+        [Fact]
+        public async Task FinaleGagnee_LeChampionEstAnnonceATous()
+        {
+            var (h, all) = await Room(2);
+            using var _r = TestRandom.Neutral().Install();
+            await h.Hub("host").BuildTournament(h.RoomId);
+            List<string> order = h.Brackets.All.Single().Rounds[^1].PlayersInRace;
+            PlayerMongo winner = h.Players.Get(order[0]);
+            PlayerMongo loser = h.Players.Get(order[1]);
+            winner.Team[0] = winner.Team[0].WithStats(atk: 999, speed: 300);
+            loser.Team[0] = loser.Team[0].WithStats(hp: 5, speed: 1);
+            h.UpdatePlayer(winner);
+            h.UpdatePlayer(loser);
+            h.Sent.Clear();
+
+            await h.PvpUses(loser, "Charge", winner);
+            await h.PvpUses(winner, "Charge", loser);
+
+            BracketMongo bracket = h.Brackets.All.Single();
+            Assert.Equal(winner._id, bracket.Champion);
+            Assert.Contains(h.Named("bracketCreated"), m => m.Target == "group:" + h.RoomId && m.Arg<BracketMongo>(0).Champion == winner._id);
+
+            // Tournoi terminé : plus de combat
+            h.Sent.Clear();
+            await h.Hub(HubHarness.Connection(winner._id)).GetPvpFight(h.RoomId, winner._id);
+            Assert.Empty(h.Named("responsePvpFight"));
+        }
     }
 }
