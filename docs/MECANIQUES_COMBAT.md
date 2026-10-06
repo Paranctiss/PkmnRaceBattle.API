@@ -90,7 +90,7 @@ Effets de terrain : `PlayerMongo.FieldChange` pour le joueur, `PokemonTeam.Field
 | Lance-Soleil, Coupe-Vent, Piqué, Coud'Krâne | Tour 1 : charge (Coud'Krâne : Défense +1) ; tour 2 : attaque |
 | Ultralaser | Tour de repos ensuite, sauf si la cible est K.O. |
 | Mania / Danse Fleurs | 2 ou 3 tours bloqué puis confus |
-| Patience | Plusieurs tours puis renvoie 2 × les dégâts reçus |
+| Patience | Règle moderne : priorité +1, le lanceur encaisse pendant 2 tours puis frappe au 3e tour **avant** l'adversaire : renvoie 2 × les dégâts reçus pendant les 2 tours d'attente (le coup du 3e tour n'est pas compté) |
 | Riposte | Priorité −5 ; 2 × les dégâts **physiques** reçus, échoue contre une attaque spéciale |
 | Ligotage, Étreinte, Danse Flammes, Claquoir | La cible perd 1/8 de ses PV max à chaque fin de tour pendant la durée (données `MinTurns`..`MaxTurns`), peut attaquer, **ne peut pas être rappelée** (Ligotage, Étreinte) |
 | Entrave | Bloque la capacité utilisée ce tour par la cible ; l'IA et `ValidatorMove` la refusent |

@@ -36,13 +36,9 @@ Aucun test n'utilise MongoDB ni le réseau : dépôts en mémoire, aléatoire pi
 - **`Battle`** : combat joueur contre sauvage/dresseur piloté par le hub (`Battle.VsWild(moi, sauvage, banc…)`, `Use("Charge")`, `UseItem("Potion", "potion", index)`, `SwitchTo(i)`, `Mine`, `Foe`, `HpShownForPlayer/Opponent` = somme des variations de PV envoyées au client). Donner `Trempette` comme seule capacité à l'adversaire pour qu'il ne fasse rien.
 - `TestSetup` met `GameDelay` à zéro pour tout l'assembly.
 
-## Écarts restants (état au 06/10/2026 : 1168 tests, 1 échec)
+## Écarts restants (état au 06/10/2026 : 1168 tests, 0 échec)
 
-Les tests suivent les règles du jeu (mix Gen 1 / moderne). Deux séries de corrections ont été faites le 06/10/2026 (précision, types, critiques, statuts et immunités, drains/reculs, dégâts fixes, Balayage, Vampigraine, PP + Lutte, XP et niveau 100, évolutions, remises à zéro, objets, barre de vie, jonction de partie, niveaux des starters/sauvages, `MinimumLevel` ; puis Clonage, K.O. en PvP, tournoi, code mort du client). Reste :
-
-| Test(s) en échec | Problème |
-|---|---|
-| `Patience_RendLeDoubleDesDegatsSubis` | Patience a une priorité de +1 dans les données (règle moderne) : au tour où elle se déclenche, le lanceur frappe avant de recevoir le coup de ce tour, que le test (Gen 1) s'attend à voir compté. Règle à trancher par le propriétaire |
+Les tests suivent les règles du jeu (mix Gen 1 / moderne). Deux séries de corrections ont été faites le 06/10/2026 (précision, types, critiques, statuts et immunités, drains/reculs, dégâts fixes, Balayage, Vampigraine, PP + Lutte, XP et niveau 100, évolutions, remises à zéro, objets, barre de vie, jonction de partie, niveaux des starters/sauvages, `MinimumLevel` ; puis Clonage, K.O. en PvP, tournoi, code mort du client). Patience suit la règle moderne (priorité +1), choix du propriétaire.
 
 Non couvert par un test en échec mais à traiter : `UserConnectionManager` (dictionnaires statiques non thread-safe utilisés par le hub en parallèle) ; côté client, les écouteurs `HubService.on*` ne sont jamais retirés (voir `PokemonRaceBattle/CLAUDE.md`).
 

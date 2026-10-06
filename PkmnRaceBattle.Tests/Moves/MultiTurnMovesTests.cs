@@ -122,12 +122,17 @@ namespace PkmnRaceBattle.Tests.Moves
                 Pkmn.Create("Mew", 50, "Patience").WithStats(hp: 400, speed: 1).WithTypes("neutre"),
                 Pkmn.Create("Ronflex", 50, "Charge").WithStats(hp: 999, speed: 300).WithTypes("neutre"));
 
-            for (int turn = 0; turn < 4 && battle.Foe.CurrHp == 999; turn++) await battle.Use("Patience");
+            // Priorité +1 (règle moderne) : Mew encaisse les tours 1 et 2, puis frappe au tour 3 avant Ronflex
+            await battle.Use("Patience");
+            await battle.Use("Patience");
+            int takenWhileWaiting = 400 - battle.Mine.CurrHp;
+            Assert.Equal(999, battle.Foe.CurrHp);
 
-            int taken = 400 - battle.Mine.CurrHp;
-            int dealt = 999 - battle.Foe.CurrHp;
-            Assert.True(taken > 0);
-            Assert.Equal(2 * taken, dealt + 0);
+            await battle.Use("Patience");
+
+            Assert.True(takenWhileWaiting > 0);
+            Assert.Equal(2 * takenWhileWaiting, 999 - battle.Foe.CurrHp);
+            Assert.True(battle.Dialog.FindLastIndex(m => m.StartsWith("Mew lance")) < battle.Dialog.FindLastIndex(m => m.StartsWith("Ronflex lance")));
         }
 
         // ---------- Riposte ----------
