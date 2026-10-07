@@ -112,15 +112,79 @@ namespace PkmnRaceBattle.Tests.Hub
         }
 
         [Fact]
-        public async Task KOduSauvage_SeulsLesPokemonAyantParticipeGagnentDeLXP()
+        public async Task KOduSauvage_SansMultiExp_SeulsLesPokemonAyantParticipeGagnentDeLXP()
         {
             using var _ = TestRandom.Neutral().Install();
             PokemonTeam bench = Pkmn.Create("Carapuce", 10);
             var battle = await Battle.VsWild(Strong("Salamèche", 20, "Griffe").WithStats(atk: 500), Dummy("Rattata", 5, 10), bench);
+            battle.H.SetXpSettings(multiXp: false, multiplier: 1);
 
             await battle.Use("Griffe");
 
             Assert.Equal(bench.CurrXP, battle.Player.Team[1].CurrXP);
+        }
+
+        [Fact]
+        public async Task KOduSauvage_MultiExpParDefaut_LeResteDeLEquipeGagneLaMoitieDeLXP()
+        {
+            using var _ = TestRandom.Neutral().Install();
+            PokemonTeam bench = Pkmn.Create("Carapuce", 10);
+            var battle = await Battle.VsWild(Strong("Salamèche", 20, "Griffe").WithStats(atk: 500), Dummy("Rattata", 5, 10), bench);
+            PokemonTeam wild = battle.Foe;
+            int leadXp = battle.Mine.CurrXP;
+
+            await battle.Use("Griffe");
+
+            int full = PokemonExperienceCalculator.ExpGained(wild, false, false, 1);
+            Assert.Equal(leadXp + full, battle.Player.Team[0].CurrXP);
+            Assert.Equal(bench.CurrXP + full / 2, battle.Player.Team[1].CurrXP);
+        }
+
+        [Fact]
+        public async Task KOduSauvage_MultiExp_UnPokemonKONeGagneRien()
+        {
+            using var _ = TestRandom.Neutral().Install();
+            PokemonTeam fainted = Pkmn.Create("Carapuce", 10).WithHp(0);
+            var battle = await Battle.VsWild(Strong("Salamèche", 20, "Griffe").WithStats(atk: 500), Dummy("Rattata", 5, 10), fainted);
+            battle.H.SetXpSettings(multiXp: true, multiplier: 5);
+
+            await battle.Use("Griffe");
+
+            Assert.Equal(fainted.CurrXP, battle.Player.Team[1].CurrXP);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(5)]
+        public async Task KOduSauvage_LeMultiplicateurDXPSAppliqueATouteLEquipe(int multiplier)
+        {
+            using var _ = TestRandom.Neutral().Install();
+            PokemonTeam bench = Pkmn.Create("Carapuce", 10);
+            var battle = await Battle.VsWild(Strong("Salamèche", 20, "Griffe").WithStats(atk: 500), Dummy("Rattata", 5, 10), bench);
+            battle.H.SetXpSettings(multiXp: true, multiplier: multiplier);
+            PokemonTeam wild = battle.Foe;
+            int leadXp = battle.Mine.CurrXP;
+
+            await battle.Use("Griffe");
+
+            int full = PokemonExperienceCalculator.ExpGained(wild, false, false, 1);
+            Assert.Equal(leadXp + full * multiplier, battle.Player.Team[0].CurrXP);
+            Assert.Equal(bench.CurrXP + full / 2 * multiplier, battle.Player.Team[1].CurrXP);
+        }
+
+        [Fact]
+        public async Task KOduSauvage_MultiExp_LeResteDeLEquipePeutMonterDeNiveau()
+        {
+            using var _ = TestRandom.Neutral().Install();
+            PokemonTeam bench = Pkmn.Create("Carapuce", 5);
+            var battle = await Battle.VsWild(Strong("Salamèche", 20, "Griffe").WithStats(atk: 500), Dummy("Ronflex", 30, 10), bench);
+            battle.H.SetXpSettings(multiXp: true, multiplier: 5);
+
+            await battle.Use("Griffe");
+
+            Assert.True(battle.Player.Team[1].Level > 5);
+            Assert.Contains(battle.Received("pokemonLevelUp"), m => m.Arg<string>(0).Contains("Carapuce monte niveau"));
         }
 
         [Fact]
@@ -362,6 +426,33 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.True(battle.Said("Voler n'est pas bon"));
             Assert.Equal(balls, battle.Player.Items.Single(i => i.Name == "Pokeball").Number);
             Assert.Empty(battle.Received("launchBall"));
+        }
+
+        [Theory]
+        [InlineData("Cyclone")]
+        [InlineData("Hurlement")]
+        public async Task CycloneDuDresseur_LeJoueurDoitEnvoyerUnAutrePokemon(string move)
+        {
+            using var _ = TestRandom.Neutral().Install();
+            PokemonTeam bench = Pkmn.Create("Carapuce", 10);
+            var battle = await Battle.VsTrainer(Pkmn.Create("Racaillou", 10, "Trempette").WithStats(speed: 1),
+                [Pkmn.Create("Roucool", 30, move).WithStats(speed: 999), Pkmn.Create("Rattata", 5)], bench);
+            string lead = battle.Mine.Id;
+
+            await battle.Use("Trempette");
+            Assert.Contains(battle.Received("playerPokemonDeath"), m => m.Arg<string>(0) == "Changez de Pokémon");
+
+            // Renvoyer le Pokémon éjecté est refusé : le choix est redemandé, le tour ne continue pas
+            int turnsBefore = battle.Received("turnFinished").Count();
+            await battle.H.Hub(battle.Connection).ReplacePokemon(battle.PlayerId, lead, battle.OpponentRef._id, false);
+            Assert.Equal(2, battle.Received("playerPokemonDeath").Count());
+            Assert.Equal(turnsBefore, battle.Received("turnFinished").Count());
+            Assert.Equal(lead, battle.Mine.Id);
+
+            // Un autre Pokémon est accepté
+            await battle.SwitchTo(1);
+            Assert.Equal(bench.Id, battle.Mine.Id);
+            Assert.DoesNotContain(GameHub.MustSwitchCase, battle.Player.Team.Single(p => p.Id == lead).SpecialCases);
         }
 
         [Theory]

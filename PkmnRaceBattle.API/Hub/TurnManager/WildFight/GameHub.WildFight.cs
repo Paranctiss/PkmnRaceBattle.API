@@ -1,6 +1,8 @@
 ﻿using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helper;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
+using PkmnRaceBattle.API.Helpers.Experience;
+using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using System.Text.RegularExpressions;
@@ -16,11 +18,11 @@ namespace PkmnRaceBattle.API.Hub
         public async Task GetWildFight(string userId)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
-            int levelAvg = player.GetAverageLevel();
+            XpSettings xpSettings = await GetXpSettings(player.RoomId);
 
-
-            // Niveau entre (moyenne de l'équipe - 3) et (moyenne - 2), au moins 1
-            int wildLevel = Math.Max(1, GameRandom.Next(RandomPurpose.Generation, levelAvg - 3, levelAvg - 1));
+            // Palier de la zone : le niveau monte au fil des combats sauvages de la map
+            ZoneLevelRange range = ZoneLevels.GetRange(ZoneLevels.GetZone(player), xpSettings);
+            int wildLevel = ZoneLevels.WildLevel(range, player.MapFightCount);
             PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandomByEnvironment(player.CurrentPath.EnvironmentName, wildLevel);
             //PokemonMongo rndPokemon = await _mongoPokemonRepository.GetPokemonMongoById(122);
 

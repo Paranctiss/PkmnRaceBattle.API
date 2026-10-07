@@ -1,4 +1,5 @@
-﻿using PkmnRaceBattle.Domain.Models.PlayerMongo;
+﻿using PkmnRaceBattle.API.Helpers.Experience;
+using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonJson;
 
 namespace PkmnRaceBattle.API.Helpers.StatsCalculator
@@ -51,6 +52,19 @@ namespace PkmnRaceBattle.API.Helpers.StatsCalculator
 
             int expGained = (int)((baseExp * level * wildModifier * expShareModifier) / 7);
             return expGained;
+        }
+
+        // XP reçue par un Pokémon de l'équipe encore debout à la fin du combat, selon les réglages de la partie.
+        // Multi Exp (règle des jeux récents) : les participants reçoivent toute l'XP, le reste de l'équipe la moitié ;
+        // sans Multi Exp, seuls les participants en reçoivent. Le multiplicateur s'applique ensuite.
+        public static int ExpReceived(PokemonTeam defeatedPokemon, bool isTrainer, bool participated, XpSettings settings)
+        {
+            if (!participated && !settings.MultiXp) return 0;
+
+            int exp = ExpGained(defeatedPokemon, isTrainer, false, 1);
+            if (!participated) exp /= 2;
+
+            return exp * XpSettings.NormalizeMultiplier(settings.Multiplier);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using PkmnRaceBattle.API.Helper;
 using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
+using PkmnRaceBattle.API.Helpers.Experience;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using System.Text.RegularExpressions;
@@ -25,7 +26,8 @@ namespace PkmnRaceBattle.API.Hub
             {
                 if (player.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")) != null)
                 {
-                    player.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")).SpecialCases = new();
+                    // Changement obligatoire : ReplacePokemon refuse le Pokémon éjecté et redemande un choix
+                    player.Team.FirstOrDefault(x => x.SpecialCases.Contains("Ejected")).SpecialCases = new() { MustSwitchCase };
                     _mongoPlayerRepository.UpdateAsync(player);
                     await Clients.Caller.SendAsync("playerPokemonDeath", "Changez de Pokémon");
                     return;
@@ -66,6 +68,7 @@ namespace PkmnRaceBattle.API.Hub
 
             if (player.Team.FirstOrDefault(t => t.CurrHp > 0) != null)
             {
+                XpSettings xpSettings = await GetXpSettings(player.RoomId);
 
                 for (int i = 0; i <= player.Team.Length - 1; i++)
                 {
@@ -108,12 +111,17 @@ namespace PkmnRaceBattle.API.Hub
                         team.SavedMoveSlot = null;
                     }
 
-                    if (team.HavePlayed && team.CurrHp > 0 && !unexpectedEnd)
+                    // XP aux Pokémon debout : participants, et reste de l'équipe si le Multi Exp est activé
+                    if (team.CurrHp > 0 && !unexpectedEnd)
                     {
-                        team.CurrXP += PokemonExperienceCalculator.ExpGained(opponentPokemon, opponent.IsTrainer, false, 0);
+                        int earnedXp = PokemonExperienceCalculator.ExpReceived(opponentPokemon, opponent.IsTrainer, team.HavePlayed, xpSettings);
                         team.HavePlayed = false;
 
-                        team = await CheckLevelUp(team);
+                        if (earnedXp > 0)
+                        {
+                            team.CurrXP += earnedXp;
+                            team = await CheckLevelUp(team);
+                        }
                     }
                     player.Team[i] = team;
 

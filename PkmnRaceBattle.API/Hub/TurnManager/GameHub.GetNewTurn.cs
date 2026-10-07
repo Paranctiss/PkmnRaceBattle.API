@@ -1,4 +1,5 @@
 using PkmnRaceBattle.API.Helpers.PathManager;
+using PkmnRaceBattle.API.Helpers.Experience;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using Microsoft.AspNetCore.SignalR;
 
@@ -25,11 +26,18 @@ namespace PkmnRaceBattle.API.Hub
                 if (nextPoints.Count == 1)
                 {
                     PlayerPathHelper.MoveTo(player, nextPoints[0]);
+                    // Étapes ajoutées au chemin : paliers de niveaux affichés sur la carte
+                    ZoneLevels.AnnotatePath(player, await GetXpSettings(player.RoomId));
                 }
                 else
                 {
-                    // Fin du chemin : le joueur recommence un cycle de combats sur sa map actuelle
+                    // Fin du chemin (ne devrait plus arriver, le chemin est prolongé à chaque déplacement) :
+                    // le joueur recommence un cycle de combats sur sa map actuelle,
+                    // qui compte comme une zone de plus (niveaux plus élevés)
                     player.MapFightCount = 0;
+                    player.PathLoopCount++;
+                    if (PlayerPathHelper.IsFightEnvironment(player.CurrentPath.EnvironmentName))
+                        ZoneLevels.SetLevels(player.CurrentPath, ZoneLevels.GetRange(ZoneLevels.GetZone(player), await GetXpSettings(player.RoomId)));
                 }
 
                 await _mongoPlayerRepository.UpdateAsync(player);
@@ -55,6 +63,7 @@ namespace PkmnRaceBattle.API.Hub
             }
 
             PlayerPathHelper.MoveTo(player, chosenPoint);
+            ZoneLevels.AnnotatePath(player, await GetXpSettings(player.RoomId));
             await _mongoPlayerRepository.UpdateAsync(player);
 
             await LaunchTurnOnCurrentPath(player);

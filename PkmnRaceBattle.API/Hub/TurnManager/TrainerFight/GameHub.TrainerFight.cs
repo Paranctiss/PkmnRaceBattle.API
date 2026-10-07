@@ -1,6 +1,8 @@
 ﻿using PkmnRaceBattle.API.Helper;
 using PkmnRaceBattle.API.Helpers.Randomness;
 using PkmnRaceBattle.API.Helpers.PokemonGeneration;
+using PkmnRaceBattle.API.Helpers.Experience;
+using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
 using System.Text.RegularExpressions;
@@ -17,9 +19,12 @@ namespace PkmnRaceBattle.API.Hub
         public async Task GetTrainerFight(string userId)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
-            int levelAvg = player.GetAverageLevel();
+            XpSettings xpSettings = await GetXpSettings(player.RoomId);
 
-            PlayerMongo trainer = await GenerateNewTrainer.GenerateNewTrainerTeam(3, levelAvg, _mongoPokemonRepository);
+            // Le dresseur clôt la zone : ses Pokémon sont au-dessus des sauvages de la map, et il en a un de plus à chaque zone
+            int zone = ZoneLevels.GetZone(player);
+            ZoneLevelRange range = ZoneLevels.GetRange(zone, xpSettings);
+            PlayerMongo trainer = await GenerateNewTrainer.GenerateNewTrainerTeam(ZoneLevels.TrainerTeamSize(zone), range.TrainerMin, range.TrainerMax, _mongoPokemonRepository);
 
             await _mongoWildPokemonRepository.CreateAsync(trainer);
             await Clients.Caller.SendAsync("responseTrainerFight", trainer);

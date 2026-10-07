@@ -58,6 +58,35 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.Equal(0, Count(battle, "Rappel"));
         }
 
+        [Theory]
+        [InlineData("Rappel")]
+        [InlineData("Rappel Max")]
+        public async Task Rappel_LePokemonRanimePerdSesStatuts(string item)
+        {
+            using var _ = TestRandom.Neutral().Install();
+            var battle = await WildBattle(bench: [Pkmn.Create("Carapuce", 10)]);
+            battle.Edit(p =>
+            {
+                p.Team[1].CurrHp = 0;
+                p.Team[1].IsBurning = true;
+                p.Team[1].IsParalyzed = true;
+                p.Team[1].IsPoisoned = 2;
+                p.Team[1].PoisonCount = 3;
+                p.Team[1].IsSleeping = 2;
+                p.Team[1].IsFrozen = true;
+                p.Items.Single(i => i.Name == item).Number = 1;
+            });
+
+            await battle.UseItem(item, "potion", 1);
+
+            PokemonTeam revived = battle.Player.Team[1];
+            Assert.True(revived.CurrHp > 0);
+            Assert.False(revived.IsBurning || revived.IsParalyzed || revived.IsFrozen);
+            Assert.Equal(0, revived.IsPoisoned);
+            Assert.Null(revived.PoisonCount);
+            Assert.Equal(0, revived.IsSleeping);
+        }
+
         [Fact]
         public async Task ObjetUtilise_LAdversaireAttaqueEnsuite()
         {
@@ -237,17 +266,27 @@ namespace PkmnRaceBattle.Tests.Hub
         }
 
         [Fact]
-        public async Task PokemonCapture_EstAjouteALEquipeAvecSesPV()
+        public async Task PokemonCapture_EstAjouteALEquipeEntierementSoigne()
         {
             using var _ = TestRandom.Neutral().Install();
-            var battle = await WildBattle(wild: Pkmn.Create("Rattata", 5, "Charge").WithHp(3));
+            PokemonTeam wild = Pkmn.Create("Rattata", 5, "Charge").WithHp(3);
+            wild.IsParalyzed = true;
+            wild.IsConfused = 2;
+            wild.AtkChanges = -2;
+            wild.Moves[0].Pp = 1;
+            var battle = await WildBattle(wild: wild);
 
             await battle.H.Hub(battle.Connection).AddPokemonToTeam(battle.PlayerId, battle.OpponentRef._id, -1);
 
             PokemonTeam caught = battle.Player.Team.Last();
             Assert.Equal(2, battle.Player.Team.Length);
             Assert.Equal("Rattata", caught.NameFr);
-            Assert.Equal(3, caught.CurrHp);
+            Assert.Equal(caught.BaseHp, caught.CurrHp);
+            Assert.False(caught.IsParalyzed);
+            Assert.Equal(0, caught.IsConfused);
+            Assert.Equal(0, caught.AtkChanges);
+            Assert.True(caught.Moves[0].MaxPp > 1);
+            Assert.Equal(caught.Moves[0].MaxPp, caught.Moves[0].Pp);
             Assert.Equal(5, caught.Level);
             Assert.Equal(1, battle.Player.MapFightCount);
             Assert.Single(battle.Received("responseWildFight"));

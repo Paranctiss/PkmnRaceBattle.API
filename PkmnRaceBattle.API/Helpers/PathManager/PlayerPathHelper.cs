@@ -14,7 +14,11 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
         public const int FightsPerMap = WildFightsPerMap + 1;
 
         private static readonly string[] FightEnvironments = ["Plaine", "Volcan", "Foret", "Grotte", "Centrale", "Eau"];
-        private static readonly string[] ServiceEnvironments = [ShopEnvironment, CenterEnvironment];
+
+        // Le chemin est généré au fur et à mesure : InitialSteps étapes au départ, puis ChunkSize de plus
+        // dès que le joueur n'a plus que ChunkSize étapes devant lui (en arrivant en 6 : 13 à 18, en 12 : 19 à 24…)
+        public const int InitialSteps = 12;
+        public const int ChunkSize = 6;
 
         // Place le joueur avant le début de son chemin (le premier GetNewTurn l'amène sur la première map)
         public static void InitPlayerPath(PlayerMongo player)
@@ -51,7 +55,7 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
                 .ToList();
         }
 
-        // Déplace le joueur sur la map donnée et grise les autres maps de la même étape
+        // Déplace le joueur sur la map donnée, grise les autres maps de la même étape et prolonge le chemin si besoin
         public static void MoveTo(PlayerMongo player, PathPoint destination)
         {
             foreach (PathPoint point in player.PlayerPath.PathPoints.Where(p => p.X == destination.X))
@@ -61,75 +65,83 @@ namespace PkmnRaceBattle.API.Helpers.PathManager
 
             player.CurrentPath = destination;
             player.MapFightCount = 0;
+            ExtendPathIfNeeded(player);
+        }
+
+        // Ajoute ChunkSize étapes tant qu'il en reste ChunkSize ou moins devant le joueur
+        public static bool ExtendPathIfNeeded(PlayerMongo player)
+        {
+            bool extended = false;
+            while (LastStep(player.PlayerPath) - player.CurrentPath.X <= ChunkSize)
+            {
+                AppendSteps(player.PlayerPath, ChunkSize);
+                extended = true;
+            }
+            return extended;
         }
 
         public static Domain.Models.PlayerMongo.Path GenerateNewPath()
         {
-            Domain.Models.PlayerMongo.Path path = new Domain.Models.PlayerMongo.Path();
-            path.PathPoints = new List<PathPoint>();
+            var path = new Domain.Models.PlayerMongo.Path { PathPoints = new List<PathPoint>() };
+            AppendSteps(path, InitialSteps);
+            return path;
+        }
 
+        public static void AppendSteps(Domain.Models.PlayerMongo.Path path, int count)
+        {
+            path.PathPoints ??= new List<PathPoint>();
+            for (int i = 0; i < count; i++) AppendStep(path);
+        }
 
-            bool hasChoice = false; // Alterne : choix / pas choix
-            int environmentCounter = 0; // Compte uniquement les environnements (pas Shop/Centre)
+        private static int LastStep(Domain.Models.PlayerMongo.Path path) =>
+            path.PathPoints.Count == 0 ? 0 : path.PathPoints.Max(p => p.X);
 
-            for (int step = 1; step <= 11; step++)
+        // Règles du chemin :
+        // - étape 1 : toujours la Plaine ;
+        // - après chaque paire de maps de combat : un Centre Pokémon puis une Boutique collée derrière ;
+        // - maps de combat : alternance embranchement (2 choix) / map unique, la première paire (Plaine
+        //   puis map unique) mise à part ;
+        // - une map de combat n'est jamais du même environnement que la map de combat précédente.
+        private static void AppendStep(Domain.Models.PlayerMongo.Path path)
+        {
+            int x = LastStep(path) + 1;
+            if (x == 1)
             {
-                // Step 1 : toujours Plaine en (1,1), pas de choix
-                if (step == 1)
-                {
-                    path.PathPoints.Add(new PathPoint { X = step, Y = 1, EnvironmentName = "Plaine" });
-
-                    hasChoice = false;
-                    environmentCounter = 1;
-                }
-                // Tous les 2 environnements : Shop ou Centre
-                else if (environmentCounter > 0 && environmentCounter % 2 == 0)
-                {
-                    path.PathPoints.Add(new PathPoint
-                    {
-                        X = step,
-                        Y = 1,
-                        EnvironmentName = ServiceEnvironments[GameRandom.Next(RandomPurpose.Generation, ServiceEnvironments.Length)]
-                    });
-                    hasChoice = false;
-                    environmentCounter = 0; // Reset le compteur après Shop/Centre
-                }
-                // Alternance choix / pas choix pour les environnements
-                else
-                {
-                    if (hasChoice)
-                    {
-                        // Le joueur a 2 choix : créer (X,1) ET (X,2)
-                        string env1 = FightEnvironments[GameRandom.Next(RandomPurpose.Generation, FightEnvironments.Length)];
-                        string env2;
-
-                        do
-                        {
-                            env2 = FightEnvironments[GameRandom.Next(RandomPurpose.Generation, FightEnvironments.Length)];
-                        } while (env2 == env1);
-
-                        path.PathPoints.Add(new PathPoint { X = step, Y = 1, EnvironmentName = env1 });
-                        path.PathPoints.Add(new PathPoint { X = step, Y = 2, EnvironmentName = env2 });
-
-                        hasChoice = false;
-                    }
-                    else
-                    {
-                        // Pas de choix : créer seulement (X,1)
-                        path.PathPoints.Add(new PathPoint
-                        {
-                            X = step,
-                            Y = 1,
-                            EnvironmentName = FightEnvironments[GameRandom.Next(RandomPurpose.Generation, FightEnvironments.Length)]
-                        });
-
-                        hasChoice = true;
-                    }
-                    environmentCounter++;
-                }
+                path.PathPoints.Add(new PathPoint { X = 1, Y = 1, EnvironmentName = "Plaine" });
+                return;
             }
 
-            return path;
+            var steps = path.PathPoints.GroupBy(p => p.X).OrderBy(g => g.Key).ToList();
+            var last = steps[^1];
+
+            if (last.Any(p => p.EnvironmentName == CenterEnvironment))
+            {
+                path.PathPoints.Add(new PathPoint { X = x, Y = 1, EnvironmentName = ShopEnvironment });
+                return;
+            }
+
+            int fightsSinceService = steps.AsEnumerable().Reverse()
+                .TakeWhile(step => step.All(p => IsFightEnvironment(p.EnvironmentName)))
+                .Count();
+            if (fightsSinceService >= 2)
+            {
+                path.PathPoints.Add(new PathPoint { X = x, Y = 1, EnvironmentName = CenterEnvironment });
+                return;
+            }
+
+            var lastFight = steps.LastOrDefault(step => step.All(p => IsFightEnvironment(p.EnvironmentName)));
+            bool hasChoice = lastFight != null && lastFight.Count() == 1 && lastFight.Key != 1;
+            List<string> available = FightEnvironments
+                .Where(env => lastFight == null || lastFight.All(p => p.EnvironmentName != env))
+                .ToList();
+
+            int options = hasChoice ? 2 : 1;
+            for (int y = 1; y <= options; y++)
+            {
+                string env = available[GameRandom.Next(RandomPurpose.Generation, available.Count)];
+                available.Remove(env);
+                path.PathPoints.Add(new PathPoint { X = x, Y = y, EnvironmentName = env });
+            }
         }
     }
 }

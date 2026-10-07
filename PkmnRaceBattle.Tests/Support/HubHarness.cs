@@ -6,6 +6,7 @@ using PkmnRaceBattle.API.Helpers.MoveManager;
 using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.PokemonMongo;
+using PkmnRaceBattle.Domain.Models.RoomMongo;
 
 namespace PkmnRaceBattle.Tests.Support
 {
@@ -90,6 +91,13 @@ namespace PkmnRaceBattle.Tests.Support
         }
 
         public static string Connection(string playerId) => "conn-" + playerId;
+
+        // Réglages d'XP de la salle (sans salle en base : Multi Exp activé, XP normale)
+        public void SetXpSettings(bool multiXp, int multiplier)
+        {
+            Rooms.CreateAsync(new RoomMongo { roomId = RoomId, state = 1, MultiXp = multiXp, XpMultiplier = multiplier })
+                .GetAwaiter().GetResult();
+        }
 
         public async Task<PlayerMongo> AddWildOpponent(PokemonTeam pokemon)
         {

@@ -17,6 +17,8 @@ namespace PkmnRaceBattle.Tests.Hub
             player.Team[2].IsConfused = 2;
             player.Team[2].AtkChanges = -2;
             player.Team[0].Moves[0].Pp = 1;
+            // Capacité enregistrée avant l'ajout des PP max
+            player.Team[0].Moves[0].MaxPp = 0;
             h.UpdatePlayer(player);
 
             await h.Hub("c").UsePokeCenter(player._id);
@@ -30,6 +32,7 @@ namespace PkmnRaceBattle.Tests.Hub
                 Assert.Equal(0, p.AtkChanges);
             });
             Assert.Equal(GameData.Move("Griffe").Pp, healed.Team[0].Moves[0].Pp);
+            Assert.Equal(GameData.Move("Griffe").Pp, healed.Team[0].Moves[0].MaxPp);
             Assert.Equal(player._id, h.Named("healedPokeCenter").Single().Arg<PlayerMongo>(0)._id);
         }
 

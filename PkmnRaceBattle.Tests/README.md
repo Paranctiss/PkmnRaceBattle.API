@@ -36,7 +36,7 @@ Aucun test n'utilise MongoDB ni le réseau : dépôts en mémoire, aléatoire pi
 - **`Battle`** : combat joueur contre sauvage/dresseur piloté par le hub (`Battle.VsWild(moi, sauvage, banc…)`, `Use("Charge")`, `UseItem("Potion", "potion", index)`, `SwitchTo(i)`, `Mine`, `Foe`, `HpShownForPlayer/Opponent` = somme des variations de PV envoyées au client). Donner `Trempette` comme seule capacité à l'adversaire pour qu'il ne fasse rien.
 - `TestSetup` met `GameDelay` à zéro pour tout l'assembly.
 
-## Écarts restants (état au 06/10/2026 : 1168 tests, 0 échec)
+## Écarts restants (état au 07/10/2026 : 1325 tests, 0 échec)
 
 Les tests suivent les règles du jeu (mix Gen 1 / moderne). Deux séries de corrections ont été faites le 06/10/2026 (précision, types, critiques, statuts et immunités, drains/reculs, dégâts fixes, Balayage, Vampigraine, PP + Lutte, XP et niveau 100, évolutions, remises à zéro, objets, barre de vie, jonction de partie, niveaux des starters/sauvages, `MinimumLevel` ; puis Clonage, K.O. en PvP, tournoi, code mort du client). Patience suit la règle moderne (priorité +1), choix du propriétaire.
 

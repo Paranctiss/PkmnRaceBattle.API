@@ -40,9 +40,11 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                     break;
                 case "Rappel":
                     givenHp = pokemonTarget.BaseHp / 2;
+                    pokemonTarget = ResetRevivedAilments(pokemonTarget);
                     break;
                 case "Rappel Max":
                     givenHp = pokemonTarget.BaseHp;
+                    pokemonTarget = ResetRevivedAilments(pokemonTarget);
                     break;
             }
             int oldHp = pokemonTarget.CurrHp;
@@ -119,6 +121,14 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
             }
 
             return "";
+        }
+
+        // Pokémon ranimé : il revient sans statut (brûlure, paralysie, poison, sommeil, gel)
+        private static PokemonTeam ResetRevivedAilments(PokemonTeam pokemonTarget)
+        {
+            pokemonTarget = ResetAilments(pokemonTarget);
+            pokemonTarget.PoisonCount = null;
+            return pokemonTarget;
         }
 
         private static PokemonTeam ResetAilments(PokemonTeam pokemonTarget)

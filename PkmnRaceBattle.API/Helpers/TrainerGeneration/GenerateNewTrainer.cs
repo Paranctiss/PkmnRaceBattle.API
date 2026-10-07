@@ -10,7 +10,8 @@ namespace PkmnRaceBattle.API.Helpers.TrainerGeneration
     public static class GenerateNewTrainer
     {
 
-        public static async Task<PlayerMongo> GenerateNewTrainerTeam(int nbPokemon, int levelAvg, IMongoPokemonRepository _mongoPokemonRepository)
+        // Niveaux entre minLevel et maxLevel (inclus) ; le Pokémon le plus fort est envoyé en dernier
+        public static async Task<PlayerMongo> GenerateNewTrainerTeam(int nbPokemon, int minLevel, int maxLevel, IMongoPokemonRepository _mongoPokemonRepository)
         {
 
             PlayerMongo trainer = new()
@@ -24,12 +25,12 @@ namespace PkmnRaceBattle.API.Helpers.TrainerGeneration
             {
                 PokemonMongo rndPokemon = await _mongoPokemonRepository.GetRandom();
                 //PokemonMongo rndPokemon = await _mongoPokemonRepository.GetPokemonMongoById(58);
-                PokemonTeam generatedPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, levelAvg-5, levelAvg-2);
+                PokemonTeam generatedPokemon = GenerateNewPokemon.GenerateNewPokemonTeam(rndPokemon, minLevel, maxLevel + 1);
                 teamList.Add(generatedPokemon);
             }
             trainer = GenerateTrainerInfos(trainer);
 
-            trainer.Team = [.. teamList];
+            trainer.Team = [.. teamList.OrderBy(p => p.Level)];
             return trainer;
         }
 

@@ -28,6 +28,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public PathPoint CurrentPath {  get; set; }
         // Nombre de combats terminés sur la map courante (remis à 0 à chaque changement de map)
         public int MapFightCount { get; set; } = 0;
+        // Tours supplémentaires de la dernière map une fois le chemin terminé (chacun compte comme une zone de plus)
+        public int PathLoopCount { get; set; } = 0;
         public bool IsHost { get; set; } = false;
         public bool IsPlayer { get; set; } = true;
         public bool IsTrainer { get; set; } = true;
@@ -191,6 +193,8 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string? NameFr { get; set; }
         public int? Accuracy { get; set; }
         public int Pp { get; set; }
+        // PP max de la capacité (0 pour les capacités enregistrées avant l'ajout du champ : remis à jour au Centre)
+        public int MaxPp { get; set; }
         public int? Power { get; set; }
         public int? Priority { get; set; }
         public string? Target { get; set; }
@@ -235,6 +239,9 @@ namespace PkmnRaceBattle.Domain.Models.PlayerMongo
         public string EnvironmentName { get; set; }
         // Branche non choisie par le joueur lors d'un embranchement (grisée sur la carte)
         public bool IsSkipped { get; set; } = false;
+        // Map de combat : du niveau du premier sauvage à celui du Pokémon le plus fort du dresseur (rempli au lancement)
+        public int? MinLevel { get; set; } = null;
+        public int? MaxLevel { get; set; } = null;
     }
 
 

@@ -1,3 +1,4 @@
+using PkmnRaceBattle.API.Helpers.Experience;
 using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
@@ -21,13 +22,24 @@ namespace PkmnRaceBattle.Tests.Hub
             return PlayerPathHelper.GenerateNewPath();
         }
 
+        // Chemin prolongé comme en jeu (blocs de 6 étapes ajoutés au fil des déplacements)
+        private static PathModel GenerateLong(int seed, int steps = 48)
+        {
+            using var _ = new TestRandom(seed).Install();
+            PathModel path = PlayerPathHelper.GenerateNewPath();
+            PlayerPathHelper.AppendSteps(path, steps - PlayerPathHelper.InitialSteps);
+            return path;
+        }
+
+        private static bool IsFightStep(IGrouping<int, PathPoint> step) => step.All(p => FightEnvironments.Contains(p.EnvironmentName));
+
         [Theory]
         [MemberData(nameof(Seeds))]
-        public void Chemin_De11EtapesConsecutives(int seed)
+        public void Chemin_De12EtapesConsecutivesAuDepart(int seed)
         {
             PathModel path = Generate(seed);
-            Assert.Equal(Enumerable.Range(1, 11), path.PathPoints.Select(p => p.X).Distinct().OrderBy(x => x));
-            Assert.All(path.PathPoints.GroupBy(p => p.X), step =>
+            Assert.Equal(Enumerable.Range(1, 12), path.PathPoints.Select(p => p.X).Distinct().OrderBy(x => x));
+            Assert.All(GenerateLong(seed).PathPoints.GroupBy(p => p.X), step =>
             {
                 Assert.InRange(step.Count(), 1, 2);
                 Assert.Equal(Enumerable.Range(1, step.Count()), step.Select(p => p.Y).OrderBy(y => y));
@@ -44,25 +56,45 @@ namespace PkmnRaceBattle.Tests.Hub
 
         [Theory]
         [MemberData(nameof(Seeds))]
-        public void Chemin_UneHalteApresChaquePaireDeMapsDeCombat(int seed)
+        public void Chemin_ApresChaquePaireDeMapsDeCombat_UnCentrePuisUneBoutiqueColles(int seed)
         {
-            var steps = Generate(seed).PathPoints.GroupBy(p => p.X).OrderBy(g => g.Key).ToList();
+            var steps = GenerateLong(seed).PathPoints.GroupBy(p => p.X).OrderBy(g => g.Key).ToList();
             int fightsSinceService = 0;
-            foreach (var step in steps)
+            for (int i = 0; i < steps.Count; i++)
             {
-                bool isService = step.All(p => Services.Contains(p.EnvironmentName));
-                if (isService)
+                var step = steps[i];
+                if (IsFightStep(step))
+                {
+                    fightsSinceService++;
+                    Assert.True(fightsSinceService <= 2, $"Étape {step.Key} : plus de 2 maps de combat sans halte");
+                    continue;
+                }
+                PathPoint service = Assert.Single(step);
+                if (service.EnvironmentName == "Centre")
                 {
                     Assert.Equal(2, fightsSinceService);
-                    Assert.Single(step);
-                    fightsSinceService = 0;
+                    // Jamais de Centre isolé : la Boutique suit (sauf en toute fin du chemin généré)
+                    if (i + 1 < steps.Count) Assert.Equal("Shop", Assert.Single(steps[i + 1]).EnvironmentName);
                 }
                 else
                 {
-                    Assert.All(step, p => Assert.Contains(p.EnvironmentName, FightEnvironments));
-                    fightsSinceService++;
-                    Assert.True(fightsSinceService <= 2, $"Étape {step.Key} : plus de 2 maps de combat sans halte");
+                    // Jamais de Boutique isolée : elle suit toujours un Centre
+                    Assert.Equal("Shop", service.EnvironmentName);
+                    Assert.Equal("Centre", Assert.Single(steps[i - 1]).EnvironmentName);
+                    fightsSinceService = 0;
                 }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(Seeds))]
+        public void Chemin_ChaqueMapDeCombatDiffereDeLaPrecedente(int seed)
+        {
+            var fights = GenerateLong(seed).PathPoints.GroupBy(p => p.X).OrderBy(g => g.Key).Where(IsFightStep).ToList();
+            for (int i = 1; i < fights.Count; i++)
+            {
+                var previous = fights[i - 1].Select(p => p.EnvironmentName).ToList();
+                Assert.All(fights[i], p => Assert.DoesNotContain(p.EnvironmentName, previous));
             }
         }
 
@@ -70,10 +102,38 @@ namespace PkmnRaceBattle.Tests.Hub
         [MemberData(nameof(Seeds))]
         public void Chemin_LesEmbranchementsProposentDeuxEnvironnementsDifferents(int seed)
         {
-            foreach (var step in Generate(seed).PathPoints.GroupBy(p => p.X).Where(g => g.Count() == 2))
+            foreach (var step in GenerateLong(seed).PathPoints.GroupBy(p => p.X).Where(g => g.Count() == 2))
             {
                 Assert.NotEqual(step.First().EnvironmentName, step.Last().EnvironmentName);
             }
+        }
+
+        [Theory]
+        [MemberData(nameof(Seeds))]
+        public void Chemin_AlternanceEmbranchementEtMapUnique(int seed)
+        {
+            var fights = GenerateLong(seed).PathPoints.GroupBy(p => p.X).OrderBy(g => g.Key).Where(IsFightStep).ToList();
+            Assert.Single(fights[0]);
+            Assert.Single(fights[1]);
+            for (int i = 2; i < fights.Count; i++)
+                Assert.Equal(i % 2 == 0 ? 2 : 1, fights[i].Count());
+        }
+
+        [Theory]
+        [InlineData(1, 12)]
+        [InlineData(5, 12)]
+        [InlineData(6, 18)]  // arrivé en 6 : étapes 13 à 18
+        [InlineData(7, 18)]
+        [InlineData(12, 24)] // arrivé en 12 : étapes 19 à 24
+        [InlineData(18, 30)]
+        public void Chemin_ProlongeDeSixEtapesAuFilDesDeplacements(int x, int expectedLastStep)
+        {
+            using var _ = new TestRandom(4).Install();
+            var player = new PlayerMongo();
+            PlayerPathHelper.InitPlayerPath(player);
+            for (int step = 1; step <= x; step++)
+                PlayerPathHelper.MoveTo(player, player.PlayerPath.PathPoints.First(p => p.X == step));
+            Assert.Equal(expectedLastStep, player.PlayerPath.PathPoints.Max(p => p.X));
         }
 
         [Fact]
@@ -85,7 +145,7 @@ namespace PkmnRaceBattle.Tests.Hub
         [Fact]
         public void Chemin_TousLesEnvironnementsDeCombatPeuventApparaitre()
         {
-            var seen = Enumerable.Range(1, 200).SelectMany(s => Generate(s).PathPoints).Select(p => p.EnvironmentName).ToHashSet();
+            var seen = Enumerable.Range(1, 200).SelectMany(s => GenerateLong(s).PathPoints).Select(p => p.EnvironmentName).ToHashSet();
             Assert.All(FightEnvironments.Concat(Services), env => Assert.Contains(env, seen));
         }
 
@@ -206,20 +266,78 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.NotNull(h.Opponents.Get(wild._id));
         }
 
+        // Paliers de zones (ZoneLevels) : le niveau dépend de la zone, plus de l'équipe
         [Theory]
         [InlineData(5)]
-        [InlineData(20)]
         [InlineData(45)]
-        public async Task CombatSauvage_NiveauEntreMoyenneMoins3EtMoyenneMoins2(int teamLevel)
+        public async Task CombatSauvage_NiveauDansLePalierDeLaZoneQuelQueSoitLeNiveauDeLEquipe(int teamLevel)
         {
+            ZoneLevelRange range = ZoneLevels.GetRange(1, XpSettings.Default);
             for (int seed = 0; seed < 10; seed++)
             {
                 var (h, player) = await Setup(1, 1, "Plaine", level: teamLevel);
                 using var _ = new TestRandom(seed).Install();
                 await NewTurn(h, player);
                 int level = h.Named("responseWildFight").Single().Arg<PlayerMongo>(0).Team[0].Level;
-                Assert.InRange(level, Math.Max(1, teamLevel - 3), Math.Max(1, teamLevel - 2));
+                Assert.InRange(level, range.WildMin, range.WildMin + 1);
             }
+        }
+
+        [Fact]
+        public async Task CombatSauvage_LeNiveauMonteAuFilDesCombatsDeLaZone()
+        {
+            ZoneLevelRange range = ZoneLevels.GetRange(1, XpSettings.Default);
+            var (h, player) = await Setup(1, 1, "Plaine", fights: 4);
+            using var _ = new TestRandom(1).Install();
+            await NewTurn(h, player);
+            int level = h.Named("responseWildFight").Single().Arg<PlayerMongo>(0).Team[0].Level;
+            Assert.InRange(level, range.WildMax - 1, range.WildMax);
+        }
+
+        [Fact]
+        public async Task CombatSauvage_LeCentreEtLaBoutiqueNeComptentPasCommeDesZones()
+        {
+            // Grotte (X = 5) vient après Plaine, Forêt, Volcan/Eau et un Centre : 4e zone de combat
+            var (h, player) = await Setup(5, 1, "Grotte");
+            Assert.Equal(4, ZoneLevels.GetZone(h.Players.Get(player._id)));
+            ZoneLevelRange range = ZoneLevels.GetRange(4, XpSettings.Default);
+            using var _ = new TestRandom(2).Install();
+            await NewTurn(h, player);
+            int level = h.Named("responseWildFight").Single().Arg<PlayerMongo>(0).Team[0].Level;
+            Assert.InRange(level, range.WildMin, range.WildMax);
+        }
+
+        [Theory]
+        [InlineData(false, 1)]
+        [InlineData(true, 2)]
+        [InlineData(true, 5)]
+        public async Task CombatSauvage_LePalierSuitLesReglagesDXPDeLaPartie(bool multiXp, int multiplier)
+        {
+            var settings = new XpSettings(multiXp, multiplier);
+            ZoneLevelRange range = ZoneLevels.GetRange(2, settings);
+            var (h, player) = await Setup(2, 1, "Foret", fights: 2);
+            h.SetXpSettings(multiXp, multiplier);
+            using var _ = new TestRandom(4).Install();
+            await NewTurn(h, player);
+            int level = h.Named("responseWildFight").Single().Arg<PlayerMongo>(0).Team[0].Level;
+            Assert.InRange(level, range.WildMin, range.WildMax);
+        }
+
+        [Fact]
+        public async Task FinDuChemin_ChaqueNouveauTourDeLaDerniereMapCompteCommeUneZoneDePlus()
+        {
+            var (h, player) = await Setup(5, 1, "Grotte", fights: 6);
+            PlayerMongo p = h.Players.Get(player._id);
+            p.PlayerPath.PathPoints.RemoveAll(pt => pt.X == 6);
+            h.UpdatePlayer(p);
+            using var _ = TestRandom.Neutral().Install();
+
+            await NewTurn(h, player);
+
+            PlayerMongo updated = h.Players.Get(player._id);
+            Assert.Equal(1, updated.PathLoopCount);
+            Assert.Equal(5, ZoneLevels.GetZone(updated));
+            Assert.Equal(ZoneLevels.GetRange(5, XpSettings.Default).WildMin, updated.CurrentPath.MinLevel);
         }
 
         [Theory]
@@ -259,9 +377,29 @@ namespace PkmnRaceBattle.Tests.Hub
             PlayerMongo trainer = h.Named("responseTrainerFight").Single().Arg<PlayerMongo>(0);
             Assert.True(trainer.IsTrainer);
             Assert.False(trainer.IsPlayer);
-            Assert.Equal(3, trainer.Team.Length);
+            // Zone 1 : le dresseur n'a qu'un Pokémon
+            Assert.Single(trainer.Team);
             Assert.False(string.IsNullOrEmpty(trainer.Name));
-            Assert.All(trainer.Team, p => Assert.InRange(p.Level, 15, 18));
+            ZoneLevelRange range = ZoneLevels.GetRange(1, XpSettings.Default);
+            Assert.All(trainer.Team, p => Assert.InRange(p.Level, range.TrainerMin, range.TrainerMax));
+            // Le Pokémon le plus fort est envoyé en dernier
+            Assert.Equal(trainer.Team.Select(p => p.Level).Order(), trainer.Team.Select(p => p.Level));
+        }
+
+        [Fact]
+        public async Task CombatDeDresseur_UnPokemonDePlusParZone_SansCompterCentreEtBoutique()
+        {
+            // Grotte (X = 5) : 4e zone de combat (le Centre en X = 4 ne compte pas)
+            var (h, player) = await Setup(5, 1, "Grotte", fights: 5);
+            using var _ = new TestRandom(3).Install();
+
+            await NewTurn(h, player);
+
+            PlayerMongo trainer = h.Named("responseTrainerFight").Single().Arg<PlayerMongo>(0);
+            Assert.Equal(4, trainer.Team.Length);
+            ZoneLevelRange range = ZoneLevels.GetRange(4, XpSettings.Default);
+            Assert.All(trainer.Team, p => Assert.InRange(p.Level, range.TrainerMin, range.TrainerMax));
+            Assert.Equal(trainer.Team.Select(p => p.Level).Order(), trainer.Team.Select(p => p.Level));
         }
 
         [Fact]
@@ -313,8 +451,8 @@ namespace PkmnRaceBattle.Tests.Hub
 
             PlayerMongo updated = h.Players.Get(player._id);
             Assert.Equal(chosen, updated.CurrentPath.EnvironmentName);
-            Assert.True(updated.PlayerPath.PathPoints.Single(p => p.EnvironmentName == skipped).IsSkipped);
-            Assert.False(updated.PlayerPath.PathPoints.Single(p => p.EnvironmentName == chosen).IsSkipped);
+            Assert.True(updated.PlayerPath.PathPoints.Single(p => p.X == 3 && p.EnvironmentName == skipped).IsSkipped);
+            Assert.False(updated.PlayerPath.PathPoints.Single(p => p.X == 3 && p.EnvironmentName == chosen).IsSkipped);
             Assert.Equal(new[] { chosen }, h.Pokemons.RequestedEnvironments);
         }
 
