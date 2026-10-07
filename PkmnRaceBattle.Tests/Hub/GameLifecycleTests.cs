@@ -1,4 +1,6 @@
 using PkmnRaceBattle.API.Helper;
+using PkmnRaceBattle.API.Helpers.Experience;
+using PkmnRaceBattle.API.Helpers.PathManager;
 using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Domain.Models.RoomMongo;
@@ -92,7 +94,7 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.Equal("Default", host.CurrentPath.EnvironmentName);
             Assert.Equal(0, host.CurrentPath.X);
             Assert.Equal(0, host.MapFightCount);
-            Assert.Equal(11, host.PlayerPath.PathPoints.Max(p => p.X));
+            Assert.Equal(PlayerPathHelper.InitialSteps, host.PlayerPath.PathPoints.Max(p => p.X));
         }
 
         [Fact]
@@ -168,6 +170,48 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.Equal(1, h.Rooms.All.Single().state);
             Assert.Contains(h.Named("GameStarted"), m => m.Target == "group:" + code && m.Arg<string>(0) == code);
             Assert.Empty(h.Named("TimerUpdate"));
+        }
+
+        [Fact]
+        public async Task LancerLaPartie_ReglagesDXPParDefaut_MultiExpEtXPNormale()
+        {
+            var (h, code, _) = await CreateGame();
+            await h.Hub("host").StartGame(code, false, 5);
+
+            RoomMongo room = h.Rooms.All.Single();
+            Assert.True(room.MultiXp);
+            Assert.Equal(1, room.XpMultiplier);
+        }
+
+        [Theory]
+        [InlineData(false, 2, 2)]
+        [InlineData(true, 5, 5)]
+        [InlineData(true, 3, 1)] // valeur inconnue : XP normale
+        public async Task LancerLaPartie_EnregistreLesReglagesDXPDeLHote(bool multiXp, int multiplier, int expected)
+        {
+            var (h, code, _) = await CreateGame();
+            await h.Hub("host").StartGame(code, false, 5, multiXp, multiplier);
+
+            RoomMongo room = h.Rooms.All.Single();
+            Assert.Equal(multiXp, room.MultiXp);
+            Assert.Equal(expected, room.XpMultiplier);
+        }
+
+        [Fact]
+        public async Task LancerLaPartie_AfficheLesPaliersDeNiveauxSurLaCarteDeChaqueJoueur()
+        {
+            var (h, code, hostId) = await CreateGame();
+            await h.Hub("guest-xp-" + h.RoomId).JoinGame("Ondine", 7, "misty", code);
+            await h.Hub("host").StartGame(code, false, 5, false, 2);
+
+            var settings = new XpSettings(false, 2);
+            foreach (PlayerMongo player in h.Players.All)
+            {
+                PathPoint first = player.PlayerPath.PathPoints.Single(p => p.X == 1);
+                Assert.Equal(ZoneLevels.GetRange(1, settings).WildMin, first.MinLevel);
+                Assert.Equal(ZoneLevels.GetRange(1, settings).TrainerMax, first.MaxLevel);
+                Assert.All(player.PlayerPath.PathPoints, p => Assert.Equal(PlayerPathHelper.IsFightEnvironment(p.EnvironmentName), p.MinLevel != null));
+            }
         }
 
         [Fact]

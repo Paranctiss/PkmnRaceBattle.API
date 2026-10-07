@@ -65,6 +65,7 @@ namespace PkmnRaceBattle.API.Helpers.PokemonGeneration
                 charge.Category = "damage";
                 charge.Id = 33;
                 charge.Pp = 35;
+                charge.MaxPp = 35;
                 charge.Power = 5;
                 charge.Priority = 0;
                 charge.Target = "selected-pokemon";

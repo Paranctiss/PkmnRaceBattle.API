@@ -571,7 +571,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager.Fights
                         target.FrontSprite = defenser.FrontSprite;
                         target.BackSprite = defenser.BackSprite;
                         target.Types = defenser.Types;
-                        target.Moves = defenser.Moves.Select(m => { PokemonTeamMove copy = m.Copy(); copy.Pp = 5; return copy; }).ToArray();
+                        target.Moves = defenser.Moves.Select(m => { PokemonTeamMove copy = m.Copy(); copy.Pp = 5; copy.MaxPp = 5; return copy; }).ToArray();
                         target.AtkChanges = defenser.AtkChanges;
                         target.AtkSpeChanges = defenser.AtkSpeChanges;
                         target.DefChanges = defenser.DefChanges;

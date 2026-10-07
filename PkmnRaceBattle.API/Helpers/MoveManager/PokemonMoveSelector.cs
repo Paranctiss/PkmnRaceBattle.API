@@ -37,6 +37,7 @@ namespace PkmnRaceBattle.API.Helpers.MoveManager
                 NameFr = move.NameFr,
                 Accuracy = move.Accuracy,
                 Pp = move.Pp,
+                MaxPp = move.Pp,
                 Power = move.Power,
                 Priority = move.Priority,
                 Target = move.Target,

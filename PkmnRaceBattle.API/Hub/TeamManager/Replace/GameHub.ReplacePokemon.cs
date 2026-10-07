@@ -13,6 +13,9 @@ namespace PkmnRaceBattle.API.Hub
 {
     public partial class GameHub
     {
+        // Pokémon éjecté par Cyclone / Hurlement : il doit être remplacé (effacé au changement par ResetForSwap)
+        public const string MustSwitchCase = "MustSwitch";
+
         public async Task ReplacePokemon(string userId, string pokemonId, string opponentId, bool pvp)
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
@@ -25,6 +28,13 @@ namespace PkmnRaceBattle.API.Hub
 
             if (pokemon == null || pokemon.CurrHp <= 0 || pokemon.Id == player.Team[0].Id)
             {
+                // Changement obligatoire (Pokémon K.O. ou éjecté) : le joueur doit choisir un autre Pokémon
+                if (player.Team[0].CurrHp <= 0 || player.Team[0].SpecialCases.Contains(MustSwitchCase))
+                {
+                    await Clients.Caller.SendAsync("playerPokemonDeath", "Ce Pokémon ne peut pas être envoyé au combat, choisissez-en un autre");
+                    return;
+                }
+
                 TurnContext refused = new TurnContext();
                 refused.AddMessage("Ce Pokémon ne peut pas être envoyé au combat");
                 await Clients.Caller.SendAsync("useMoveResult", refused);

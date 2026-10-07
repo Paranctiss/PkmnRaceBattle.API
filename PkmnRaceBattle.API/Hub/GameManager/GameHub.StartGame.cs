@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.SignalR;
 using PkmnRaceBattle.Domain.Models.RoomMongo;
 using PkmnRaceBattle.API.Helpers.PokemonStates;
+using PkmnRaceBattle.API.Helpers.Experience;
+using PkmnRaceBattle.API.Helpers.PathManager;
 
 namespace PkmnRaceBattle.API.Hub
 {
@@ -47,11 +49,25 @@ namespace PkmnRaceBattle.API.Hub
                 await _mongoPlayerRepository.UpdateAsync(player);
             }
         }
-        public async Task StartGame(string gameCode, bool checkedTimer, int timerTime)
+        private async Task<XpSettings> GetXpSettings(string roomId) =>
+            XpSettings.FromRoom(await _mongoRoomRepository.GetByRoomIdAsync(roomId));
+
+        // multiXp / xpMultiplier : réglages d'XP choisis par l'hôte (Multi Exp activé et XP normale par défaut)
+        public async Task StartGame(string gameCode, bool checkedTimer, int timerTime, bool multiXp = true, int xpMultiplier = 1)
         {
             RoomMongo room = await _mongoRoomRepository.GetByRoomIdAsync(gameCode);
             room.state = 1;
+            room.MultiXp = multiXp;
+            room.XpMultiplier = XpSettings.NormalizeMultiplier(xpMultiplier);
             await _mongoRoomRepository.UpdateAsync(gameCode, room);
+
+            // Paliers de niveaux affichés sur la carte de chaque joueur
+            XpSettings xpSettings = XpSettings.FromRoom(room);
+            foreach (PlayerMongo player in await _mongoPlayerRepository.GetByRoomId(gameCode))
+            {
+                ZoneLevels.AnnotatePath(player, xpSettings);
+                await _mongoPlayerRepository.UpdateAsync(player);
+            }
 
             // Définir l'heure de fin (5 minutes à partir de maintenant)
             //DateTime endTime = DateTime.UtcNow.AddSeconds(2);

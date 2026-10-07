@@ -36,7 +36,7 @@ namespace PkmnRaceBattle.API.Hub
                 foreach (PokemonTeamMove move in player.Team[i].Moves)
                 {
                     MoveMongo reference = await _mongoMoveRepository.GetMoveMongoByName(move.NameFr);
-                    if (reference != null) move.Pp = reference.Pp;
+                    if (reference != null) move.Pp = move.MaxPp = reference.Pp;
                 }
             }
 
