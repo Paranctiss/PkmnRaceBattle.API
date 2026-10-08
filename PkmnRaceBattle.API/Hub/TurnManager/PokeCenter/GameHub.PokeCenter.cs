@@ -24,25 +24,40 @@ namespace PkmnRaceBattle.API.Hub
         {
             PlayerMongo player = await _mongoPlayerRepository.GetByPlayerIdAsync(userId);
 
-            for (int i = 0; i < player.Team.Length; i++)
-            {
-                player.Team[i].CurrHp = player.Team[i].BaseHp;
-                player.Team[i].IsBurning = false;
-                player.Team[i].IsParalyzed = false;
-                player.Team[i].IsPoisoned = 0;
-                player.Team[i].IsSleeping = 0;
-                player.Team[i].IsFrozen = false;
-                player.Team[i] = PokemonStatesHelper.ResetForSwap(player.Team[i]);
-                foreach (PokemonTeamMove move in player.Team[i].Moves)
-                {
-                    MoveMongo reference = await _mongoMoveRepository.GetMoveMongoByName(move.NameFr);
-                    if (reference != null) move.Pp = move.MaxPp = reference.Pp;
-                }
-            }
+            await HealTeamLikePokeCenter(player);
 
             await _mongoPlayerRepository.UpdateAsync(player);
 
             await Clients.Caller.SendAsync("healedPokeCenter", player);
+        }
+
+        // Soin complet du Centre Pokémon (aussi utilisé après une défaite et à chaque étape du tournoi) :
+        // états de combat, PV, statuts et PP (valeurs de la collection Move). Ne sauvegarde pas le joueur.
+        private async Task HealTeamLikePokeCenter(PlayerMongo player)
+        {
+            player.FieldChange = null;
+            player.FieldChangeCount = null;
+            player.ChosenMove = null;
+
+            for (int i = 0; i < player.Team.Length; i++)
+            {
+                // Avant le soin : un Métamorph transformé reprend sa forme d'origine
+                PokemonTeam pokemon = PokemonStatesHelper.ResetForSwap(player.Team[i]);
+                pokemon.CurrHp = pokemon.BaseHp;
+                pokemon.IsBurning = false;
+                pokemon.IsParalyzed = false;
+                pokemon.IsPoisoned = 0;
+                pokemon.PoisonCount = null;
+                pokemon.IsSleeping = 0;
+                pokemon.IsFrozen = false;
+                foreach (PokemonTeamMove move in pokemon.Moves)
+                {
+                    MoveMongo reference = await _mongoMoveRepository.GetMoveMongoByName(move.NameFr);
+                    if (reference != null) move.Pp = move.MaxPp = reference.Pp;
+                    else if (move.MaxPp > 0) move.Pp = move.MaxPp;
+                }
+                player.Team[i] = pokemon;
+            }
         }
     }
 }

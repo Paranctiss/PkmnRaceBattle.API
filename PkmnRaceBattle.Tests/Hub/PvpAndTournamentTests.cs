@@ -1,4 +1,4 @@
-using PkmnRaceBattle.API.Hub;
+﻿using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.BracketMongo;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Tests.Support;
@@ -156,6 +156,34 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.Single(d.H.Named("playerLooseFight", d.BlueConn));
             Assert.Empty(d.H.Named("playerLooseFight", d.RedConn));
             Assert.Empty(d.H.Named("responseWildFight"));
+        }
+
+        [Fact]
+        public async Task FinDuDuel_LesDeuxEquipesSontSoigneesCommeAuCentrePokemon()
+        {
+            using var _ = TestRandom.Neutral().Install();
+            var d = await Setup(Fighter("Pikachu", 200, hp: 300, "Ultimapoing").WithStats(atk: 999), Fighter("Évoli", 100, hp: 10),
+                redBench: [Fighter("Racaillou", 50)]);
+            d.Red.Team[1].CurrHp = 1;
+            d.Red.Team[1].IsBurning = true;
+            d.Red.Team[1].Moves[0].Pp = 0;
+            d.Blue.Team[0].IsPoisoned = 2;
+            d.Blue.Team[0].PoisonCount = 3;
+            d.H.UpdatePlayer(d.Red);
+            d.H.UpdatePlayer(d.Blue);
+
+            await d.H.PvpUses(d.Blue, "Charge", d.Red);
+            await d.H.PvpUses(d.Red, "Ultimapoing", d.Blue);
+
+            foreach (PlayerMongo player in new[] { d.RedNow, d.BlueNow })
+                foreach (PokemonTeam pokemon in player.Team)
+                {
+                    Assert.Equal(pokemon.BaseHp, pokemon.CurrHp);
+                    Assert.False(pokemon.IsBurning);
+                    Assert.Equal(0, pokemon.IsPoisoned);
+                    Assert.Null(pokemon.PoisonCount);
+                    Assert.All(pokemon.Moves, m => Assert.Equal(GameData.Move(m.NameFr).Pp, m.Pp));
+                }
         }
 
         [Fact]
