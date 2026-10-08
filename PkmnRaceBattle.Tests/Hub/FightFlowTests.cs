@@ -1,4 +1,4 @@
-using PkmnRaceBattle.API.Helpers.StatsCalculator;
+﻿using PkmnRaceBattle.API.Helpers.StatsCalculator;
 using PkmnRaceBattle.API.Hub;
 using PkmnRaceBattle.Domain.Models.PlayerMongo;
 using PkmnRaceBattle.Tests.Support;
@@ -218,6 +218,7 @@ namespace PkmnRaceBattle.Tests.Hub
             Assert.Equal(1500, battle.Player.Credits);
             Assert.Equal(battle.Mine.BaseHp, battle.Mine.CurrHp);
             Assert.Equal(0, battle.Mine.IsPoisoned);
+            Assert.Equal(GameData.Move("Griffe").Pp, battle.Mine.Moves[0].Pp);
             Assert.Equal(1, battle.Player.MapFightCount);
         }
 

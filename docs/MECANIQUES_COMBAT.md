@@ -34,7 +34,7 @@ Le jeu est un **mix voulu** : base Gen 1 (151 Pokémon, capacités de RBY, parco
    - pour chaque attaquant : Métronome / Mimique / Copie, `SpecialCaseFail`, effets de terrain, `FightPerformMove.PerformMove`, `PerformSpecialCaseMove`, fin de combat anticipée (`ManageSpecialCasesAfterMove` : Cyclone, Hurlement, Téléport), K.O. ;
    - fin de tour : `SufferAilment` (brûlure, poison) et `SufferSpecialCases` (Vampigraine), attaques sur plusieurs tours (`MultiTurnsMove` : pièges, Entrave), décompte des effets de terrain ;
    - sauvegarde et `turnFinished(joueur, adversaire)` (chaque joueur reçoit son propre état en premier en PvP).
-3. `FinishFight(player, opponent, unexpectedEnd)` : remise à zéro des états temporaires, XP aux Pokémon qui ont joué (`HavePlayed`), argent (Jackpot, dresseur), défaite (moitié de l'argent, soin), `MapFightCount++` puis `GetNewTurn` (ou `TrainerSendNextPokemon` si le dresseur a encore des Pokémon). Le PvP ne fait pas avancer la carte.
+3. `FinishFight(player, opponent, unexpectedEnd)` : remise à zéro des états temporaires, XP aux Pokémon qui ont joué (`HavePlayed`), argent (Jackpot, dresseur), défaite (moitié de l'argent, soin complet comme au Centre Pokémon : PV, statuts, PP), `MapFightCount++` puis `GetNewTurn` (ou `TrainerSendNextPokemon` si le dresseur a encore des Pokémon). Le PvP ne fait pas avancer la carte ; à la fin de chaque duel du tournoi, les **deux** joueurs sont soignés comme au Centre Pokémon (PV, statuts, PP), de même qu'à l'entrée dans le tournoi (`HealTeamLikePokeCenter`).
 
 ### TurnContext et animation côté client
 

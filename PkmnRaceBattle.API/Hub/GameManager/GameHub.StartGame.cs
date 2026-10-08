@@ -28,24 +28,14 @@ namespace PkmnRaceBattle.API.Hub
             return room != null && room.state >= RoomStateRaceOver;
         }
 
-        // Fin de la course : les équipes entrent soignées dans le tournoi
+        // Fin de la course : les équipes entrent soignées dans le tournoi (comme au Centre Pokémon, PP compris)
         private async Task HealTeamsForTournament(string gameCode)
         {
             List<PlayerMongo> players = await _mongoPlayerRepository.GetByRoomId(gameCode);
 
             foreach (PlayerMongo player in players)
             {
-                for (int i = 0; i < player.Team.Length; i++)
-                {
-                    player.Team[i].CurrHp = player.Team[i].BaseHp;
-                    player.Team[i].IsBurning = false;
-                    player.Team[i].IsParalyzed = false;
-                    player.Team[i].IsPoisoned = 0;
-                    player.Team[i].IsSleeping = 0;
-                    player.Team[i].IsFrozen = false;
-                    player.Team[i] = PokemonStatesHelper.ResetForSwap(player.Team[i]);
-                }
-
+                await HealTeamLikePokeCenter(player);
                 await _mongoPlayerRepository.UpdateAsync(player);
             }
         }

@@ -210,6 +210,9 @@ namespace PkmnRaceBattle.API.Hub
                     }
                     player.Team[i] = team;
                 }
+                // Défaite : l'équipe est soignée comme au Centre Pokémon (PP compris)
+                await HealTeamLikePokeCenter(player);
+
                 //Combat perdu go heal + diviser l'argent en 2
                 int lostCredits = player.Credits / 2;
                 player.Credits = lostCredits;
@@ -234,6 +237,18 @@ namespace PkmnRaceBattle.API.Hub
             // Combat PvE terminé (victoire, défaite, capture ou fuite) : il compte dans la progression de la map
             if (!opponent.IsPlayer && !trainerContinues) player.MapFightCount++;
 
+            // Fin d'un duel du tournoi : les deux joueurs repartent soignés comme au Centre Pokémon (PV, statuts, PP)
+            string? pvpWinnerId = null;
+            if (opponent.IsPlayer && !unexpectedEnd)
+                pvpWinnerId = lost ? opponent._id
+                    : opponent.Team.All(x => x.CurrHp <= 0) ? player._id
+                    : null;
+            if (pvpWinnerId != null)
+            {
+                await HealTeamLikePokeCenter(player);
+                await HealTeamLikePokeCenter(opponent);
+            }
+
             await this._mongoPlayerRepository.UpdateAsync(player);
 
             if (!opponent.IsPlayer) await this._mongoWildPokemonRepository.UpdateAsync(opponent);
@@ -242,13 +257,7 @@ namespace PkmnRaceBattle.API.Hub
             // Le PvP est piloté par le tournoi, pas par le chemin
             if (opponent.IsPlayer)
             {
-                if (!unexpectedEnd)
-                {
-                    string? winnerId = lost ? opponent._id
-                        : opponent.Team.All(x => x.CurrHp <= 0) ? player._id
-                        : null;
-                    if (winnerId != null) await AdvanceTournament(player.RoomId, winnerId);
-                }
+                if (pvpWinnerId != null) await AdvanceTournament(player.RoomId, pvpWinnerId);
                 return;
             }
 
